@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		27AC0329245CC975007D2699 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 27AC0328245CC975007D2699 /* main.cpp */; };
+		27AC0331245CC986007D2699 /* GLUT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27AC0330245CC986007D2699 /* GLUT.framework */; };
+		27AC0333245CC98D007D2699 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27AC0332245CC98D007D2699 /* Cocoa.framework */; };
+		27AC0335245CC993007D2699 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27AC0334245CC993007D2699 /* OpenGL.framework */; };
+		27AC0338245CC9CA007D2699 /* framework.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 27AC0337245CC9CA007D2699 /* framework.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +29,11 @@
 /* Begin PBXFileReference section */
 		27AC0325245CC975007D2699 /* grafika-3d-enginelet */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "grafika-3d-enginelet"; sourceTree = BUILT_PRODUCTS_DIR; };
 		27AC0328245CC975007D2699 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		27AC0330245CC986007D2699 /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = System/Library/Frameworks/GLUT.framework; sourceTree = SDKROOT; };
+		27AC0332245CC98D007D2699 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		27AC0334245CC993007D2699 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		27AC0336245CC9CA007D2699 /* framework.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = framework.h; sourceTree = "<group>"; };
+		27AC0337245CC9CA007D2699 /* framework.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = framework.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +41,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				27AC0335245CC993007D2699 /* OpenGL.framework in Frameworks */,
+				27AC0333245CC98D007D2699 /* Cocoa.framework in Frameworks */,
+				27AC0331245CC986007D2699 /* GLUT.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -43,6 +55,7 @@
 			children = (
 				27AC0327245CC975007D2699 /* grafika-3d-enginelet */,
 				27AC0326245CC975007D2699 /* Products */,
+				27AC032F245CC986007D2699 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -58,8 +71,20 @@
 			isa = PBXGroup;
 			children = (
 				27AC0328245CC975007D2699 /* main.cpp */,
+				27AC0337245CC9CA007D2699 /* framework.cpp */,
+				27AC0336245CC9CA007D2699 /* framework.h */,
 			);
 			path = "grafika-3d-enginelet";
+			sourceTree = "<group>";
+		};
+		27AC032F245CC986007D2699 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				27AC0334245CC993007D2699 /* OpenGL.framework */,
+				27AC0332245CC98D007D2699 /* Cocoa.framework */,
+				27AC0330245CC986007D2699 /* GLUT.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -119,6 +144,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				27AC0338245CC9CA007D2699 /* framework.cpp in Sources */,
 				27AC0329245CC975007D2699 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
