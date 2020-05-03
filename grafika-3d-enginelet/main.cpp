@@ -66,9 +66,40 @@ public:
     CheckerBoardTexture(const int width = 0, const int height = 0) : Texture() {
         std::vector<vec4> image(width * height);
         const vec4 yellow(1, 1, 0, 1), blue(0, 0, 1, 1);
-        for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++) {
             image[y * width + x] = (x & 1) ^ (y & 1) ? yellow : blue;
         }
+        create(width, height, image, GL_NEAREST);
+    }
+};
+
+//---------------------------
+class StripyTexture : public Texture { //textura tipus implementacioja, letrehozasa
+//---------------------------
+public:
+    StripyTexture(const int width = 0, const int height = 0) : Texture() {
+        std::vector<vec4> image(width * height);
+        const vec4 yellow(1, 1, 0, 1), blue(0, 0, 1, 1);
+        for (int x = 0; x < width; x++)
+        {
+            int counter = 0;
+            bool isBlue = true;
+            
+            for (int y = 0; y < height; y++) {
+                
+                if(counter % 5 == 0)
+                {
+                    isBlue = !isBlue;
+                    counter = 0;
+                }
+                
+                if(isBlue) image[y * width + x] = blue;
+                else{image[y * width + x] = yellow; }
+                counter ++;
+            }
+        }
+            
         create(width, height, image, GL_NEAREST);
     }
 };
@@ -476,17 +507,20 @@ typedef Dnum<vec2> Dnum2;
 //---------------------------
 class Sphere : public ParamSurface {
 //---------------------------
+    
+    float radius = 1.2f;
 public:
     Sphere() { create(); }
 
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
-        vd.position = vd.normal = vec3(cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       cosf(v * (float)M_PI));
+        vd.position = vd.normal = vec3(radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * cosf(v * (float)M_PI));
         vd.texcoord = vec2(u, v);
         return vd;
     }
+    
 };
 
 //---------------------------
@@ -634,9 +668,52 @@ public:
     }
 
     //az animaciot biztosito fuggveny
-    //TODO: animacio: mozgas, hullamzas, talan forgas is
     virtual void Animate(float tstart, float tend) { rotationAngle = 0.8f * tend; }
 };
+
+//---------------------------
+struct VirusObject : Object{
+//---------------------------
+ 
+    std::vector<Object*> children;
+    
+public:
+    VirusObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry) :
+    Object(_shader, _material, _texture, _geometry){
+        
+    }
+  
+    void SetModelingTransform(mat4& M, mat4& Minv) {
+        M = ScaleMatrix(scale) * RotationMatrix(rotationAngle, rotationAxis) * TranslateMatrix(translation);
+        Minv = TranslateMatrix(-translation) * RotationMatrix(-rotationAngle, rotationAxis) * ScaleMatrix(vec3(1 / scale.x, 1 / scale.y, 1 / scale.z));
+    }
+
+    void Draw(RenderState state) {
+        mat4 M, Minv;
+        SetModelingTransform(M, Minv);
+        state.M = M;
+        state.Minv = Minv;
+        state.MVP = state.M * state.V * state.P;
+        state.material = material;
+        state.texture = texture;
+        shader->Bind(state);
+        geometry->Draw();
+    }
+
+    //az animaciot biztosito fuggveny
+    //TODO: animacio: mozgas, hullamzas, talan forgas is
+     void Animate(float tstart, float tend)
+    {
+        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
+        
+        vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
+        translationVec = normalize(translationVec);
+        translation = translationVec;
+        rotationAxis = cosf(tend);
+        
+    }
+};
+
 
 //---------------------------
 class Scene {
@@ -667,6 +744,8 @@ public:
         // Textures
         Texture * texture4x8 = new CheckerBoardTexture(4, 8); //parameterezheto sakktabla textura
         Texture * texture15x20 = new CheckerBoardTexture(15, 20); //mas parameterekkel
+        Texture * stripyTexture = new StripyTexture(150, 150);
+
 
         // Geometries
         Geometry * sphere = new Sphere();
@@ -681,7 +760,7 @@ public:
         sphereObject1->scale = vec3(1.0f, 1.0f, 1.0f);
         objects.push_back(sphereObject1);
 
-        Object * torusObject1 = new Object(phongShader, material0, texture4x8, torus);
+        Object * torusObject1 = new VirusObject(phongShader, material0, stripyTexture, sphere);
         torusObject1->translation = vec3(0, 3, 0);
         torusObject1->rotationAxis = vec3(1, 1, -1);
         torusObject1->scale = vec3(0.7f, 0.7f, 0.7f);
