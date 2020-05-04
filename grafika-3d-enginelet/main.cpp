@@ -104,6 +104,25 @@ public:
     }
 };
 
+//---------------------------
+class RainbowTexture : public Texture { //textura tipus implementacioja, letrehozasa
+//---------------------------
+public:
+    RainbowTexture(const int width = 0, const int height = 0) : Texture() {
+        std::vector<vec4> image(width * height);
+        const vec4 yellow(1, 1, 0, 1), blue(0, 0, 1, 1);
+        for (int x = 0; x < width; x++)
+        {
+          
+            for (int y = 0; y < height; y++) {
+                image[y * width + x] = vec4(x/100,y/100,x/100,1);
+            }
+        }
+            
+        create(width, height, image, GL_NEAREST);
+    }
+};
+
 
 //---------------------------
 //Egyfajta interface az objektumok es shaderek kozott
@@ -417,16 +436,19 @@ public:
 //Parametrikus felulet alaposztaly
 class ParamSurface : public Geometry {
 //---------------------------
+protected:
     unsigned int nVtxPerStrip, nStrips; // egy stripen belul osszesen hany csucspontot adunk meg, hany sora van az adott felbontasnak
+    std::vector<VertexData> vtxData;
+    
 public:
     ParamSurface() { nVtxPerStrip = nStrips = 0; }
-
+    
     virtual VertexData GenVertexData(float u, float v) = 0;
-
+    
     void create(int N = tessellationLevel, int M = tessellationLevel) {
         nVtxPerStrip = (M + 1) * 2;
         nStrips = N;
-        std::vector<VertexData> vtxData;    // vertices on the CPU
+        vtxData;    // vertices on the CPU
         for (int i = 0; i < N; i++) {
             for (int j = 0; j <= M; j++) {
                 vtxData.push_back(GenVertexData((float)j / M, (float)i / N));
@@ -502,8 +524,6 @@ template<class T> Dnum<T> Sinh(Dnum<T> g) { return Dnum<T>(sinh(g.f),cosh(g.f) *
 
 typedef Dnum<vec2> Dnum2;
 
-
-    
 //---------------------------
 class Sphere : public ParamSurface {
 //---------------------------
@@ -521,16 +541,73 @@ public:
         return vd;
     }
     
+    
 };
+
+//---------------------------
+class VirusParent : public ParamSurface {
+//---------------------------
+    float radius = 1.2f;
+public:
+    VirusParent() { create(); }
+
+    VertexData GenVertexData(float u, float v) {
+        VertexData vd;
+        radius = (1.3f + (sin((19.0f*u) + (24.0f*v)))/8);
+        
+        //TODO: determining normal of the surface
+        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * cosf(v * (float)M_PI));
+        vd.texcoord = vec2(u, v);
+        return vd;
+    }
+    
+    VertexData GenVertexDataForTime(float u, float v, float tend) {
+        VertexData vd;
+        radius = 1.3f + ((sin((19.0f*u) + (24.0f*v)))/8 * cosf(tend*2));
+        
+        //TODO: determining normal of the surface
+        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * cosf(v * (float)M_PI));
+        vd.texcoord = vec2(u, v);
+        return vd;
+    }
+    
+    //virus waving movement
+    void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
+        nVtxPerStrip = (M + 1) * 2;
+        nStrips = N;
+        
+        while(vtxData.size() != 0){ vtxData.pop_back();} // vertices on the CPU
+        
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j <= M; j++) {
+                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)i / N, tend));
+                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)(i + 1) / N, tend));
+            }
+        }
+        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+        // Enable the vertex attribute arrays
+        glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
+        glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
+        glEnableVertexAttribArray(2);  // attribute array 2 = TEXCOORD0
+        // attribute array, components/attribute, component type, normalize?, stride, offset
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
+    }
+};
+
+
 
 //---------------------------
 //saját tractricoid implementáció
 class Tractricoid : public ParamSurface{
 //---------------------------
-    
     //TODO: magasság még konfigurálandó
     float height = 3.0f;
-    
 public:
   Tractricoid() { create(); }
 
@@ -554,8 +631,6 @@ public:
         Y = Sin(V) / Cosh(U);
         Z = U - (Sinh(U)/Cosh(U)); // U - Tanh(U)
     }
-    
-    
 };
 
 //---------------------------
@@ -674,15 +749,18 @@ public:
 //---------------------------
 struct VirusObject : Object{
 //---------------------------
- 
-    std::vector<Object*> children;
-    
+    VirusParent* virusParent; //transformed sphere body of the virus
 public:
-    VirusObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry) :
+    
+    //children
+    std::vector<Tractricoid*> children;
+
+    //constr
+    VirusObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, VirusParent * _parent) :
     Object(_shader, _material, _texture, _geometry){
-        
+        virusParent = _parent;
     }
-  
+    
     void SetModelingTransform(mat4& M, mat4& Minv) {
         M = ScaleMatrix(scale) * RotationMatrix(rotationAngle, rotationAxis) * TranslateMatrix(translation);
         Minv = TranslateMatrix(-translation) * RotationMatrix(-rotationAngle, rotationAxis) * ScaleMatrix(vec3(1 / scale.x, 1 / scale.y, 1 / scale.z));
@@ -705,13 +783,15 @@ public:
      void Animate(float tstart, float tend)
     {
         rotationAngle = 0.8f * tend; //saját tengely körüli forgás
-        
         vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
         translationVec = normalize(translationVec);
         translation = translationVec;
-        rotationAxis = cosf(tend);
-        
+        rotationAxis = 1; //cosf(tend);
+        virusParent->reCreate(tessellationLevel, tessellationLevel, tend);
     }
+    
+    //TODO: collection tractricoid objects aroud the sphere
+    void addChildren(){}
 };
 
 
@@ -745,10 +825,16 @@ public:
         Texture * texture4x8 = new CheckerBoardTexture(4, 8); //parameterezheto sakktabla textura
         Texture * texture15x20 = new CheckerBoardTexture(15, 20); //mas parameterekkel
         Texture * stripyTexture = new StripyTexture(150, 150);
+        Texture * rainbowTexture = new RainbowTexture(200,200);
 
 
         // Geometries
-        Geometry * sphere = new Sphere();
+        Sphere * sphere = new Sphere();
+        Geometry * sphereGeometry = sphere;
+        
+        VirusParent * virusParent = new VirusParent();
+        Geometry * virusParentGeometry = virusParent;
+        
         Geometry * torus = new Torus();
         Geometry * mobius = new Mobius();
         Geometry * tractricoid = new Tractricoid();
@@ -758,49 +844,40 @@ public:
         sphereObject1->translation = vec3(-3, 3, 0);
         sphereObject1->rotationAxis = vec3(0, 1, 1);
         sphereObject1->scale = vec3(1.0f, 1.0f, 1.0f);
-        objects.push_back(sphereObject1);
+        //objects.push_back(sphereObject1);
 
-        Object * torusObject1 = new VirusObject(phongShader, material0, stripyTexture, sphere);
-        torusObject1->translation = vec3(0, 3, 0);
-        torusObject1->rotationAxis = vec3(1, 1, -1);
-        torusObject1->scale = vec3(0.7f, 0.7f, 0.7f);
-        objects.push_back(torusObject1);
+        Object * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
+        virusObject->translation = vec3(0, 0, 0);
+        virusObject->rotationAxis = vec3(1, 1, -1);
+        virusObject->scale = vec3(0.8f, 0.8f, 0.8f);
+        virusObject->shader = phongShader;
+        objects.push_back(virusObject);
 
         Object * mobiusObject1 = new Object(phongShader, material0, texture4x8, mobius);
         mobiusObject1->translation = vec3(3, 3, 0);
         mobiusObject1->rotationAxis = vec3(1, 0, 0);
         mobiusObject1->scale = vec3(0.7f, 0.7f, 0.7f);
-        objects.push_back(mobiusObject1);
+        //objects.push_back(mobiusObject1);
 
         Object * sphereObject2 = new Object(*sphereObject1);
         sphereObject2->translation = vec3(-3, -3, 0);
         sphereObject2->shader = nprShader;
-        objects.push_back(sphereObject2);
-
-        Object * torusObject2 = new Object(*torusObject1);
-        torusObject2->translation = vec3(0, -3, 0);
-        torusObject2->shader = nprShader;
-        objects.push_back(torusObject2);
+        //objects.push_back(sphereObject2);
 
         Object * mobiusObject2 = new Object(*mobiusObject1);
         mobiusObject2->translation = vec3(3, -3, 0);
         mobiusObject2->shader = nprShader;
-        objects.push_back(mobiusObject2);
+        //objects.push_back(mobiusObject2);
 
         Object * sphereObject3 = new Object(*sphereObject1);
         sphereObject3->translation = vec3(-3, 0, 0);
         sphereObject3->shader = gouraudShader;
-        objects.push_back(sphereObject3);
-
-        Object * torusObject3 = new Object(*torusObject1);
-        torusObject3->translation = vec3(0, 0, 0);
-        torusObject3->shader = gouraudShader;
-        objects.push_back(torusObject3);
+        //objects.push_back(sphereObject3);
 
         Object * mobiusObject3 = new Object(*mobiusObject1);
         mobiusObject3->translation = vec3(3, 0, 0);
         mobiusObject3->shader = gouraudShader;
-        objects.push_back(mobiusObject3);
+        //objects.push_back(mobiusObject3);
 
         // Camera
         camera.wEye = vec3(0, 0, 6);
