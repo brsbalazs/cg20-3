@@ -439,6 +439,7 @@ class ParamSurface : public Geometry {
 protected:
     unsigned int nVtxPerStrip, nStrips; // egy stripen belul osszesen hany csucspontot adunk meg, hany sora van az adott felbontasnak
     std::vector<VertexData> vtxData;
+    bool isTetrahedron = false;
     
 public:
     ParamSurface() { nVtxPerStrip = nStrips = 0; }
@@ -449,13 +450,37 @@ public:
         nVtxPerStrip = (M + 1) * 2;
         nStrips = N;
         vtxData;    // vertices on the CPU
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j <= M; j++) {
-                vtxData.push_back(GenVertexData((float)j / M, (float)i / N));
-                vtxData.push_back(GenVertexData((float)j / M, (float)(i + 1) / N));
+        
+        if(!isTetrahedron)
+        {
+            for (int i = 0; i < N; i++) {
+                for (int j = 0; j <= M; j++) {
+                    vtxData.push_back(GenVertexData((float)j / M, (float)i / N));
+                    vtxData.push_back(GenVertexData((float)j / M, (float)(i + 1) / N));
+                }
             }
+            
+            glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+            //glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+            // Enable the vertex attribute arrays
+            glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
+            glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
+            glEnableVertexAttribArray(2);  // attribute array 2 = TEXCOORD0
+            // attribute array, components/attribute, component type, normalize?, stride, offset
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, position));
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, normal));
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
+
         }
-        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+        else if(isTetrahedron)
+        {
+            GenVertexData(0, 0);
+            glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+
+        }
+        
+        
+        //glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
         // Enable the vertex attribute arrays
         glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
         glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
@@ -600,6 +625,127 @@ public:
     }
 };
 
+//---------------------------
+class Tetrahedron : public ParamSurface {
+//---------------------------
+    /*A tetrtaéder definíciója a 3 alappontból, plusz magasságból
+     -felületi normális: a 4pont átlagából a vizsgált pontba húzott vektor normalizált alakja*/
+    
+    float radius = 1.2f;
+    vec3 vert1;
+    vec3 vert2;
+    vec3 vert3;
+    vec3 vert4;
+    vec3 orientation;
+    float height;
+    
+public:
+    //orientation: egy egysegvektor ami megmutatja, hogy az alaptol milyen iranyba kell mennunk magassagnyival,
+    // megadhato neki a parent surface normalvektora pl.
+    Tetrahedron(vec3 _vert1, vec3 _vert2, vec3 _vert3, float _height, vec3 _orientation)
+    {
+        isTetrahedron = true;
+        vert1 = _vert1;
+        vert2 = _vert2;
+        vert3 = _vert3;
+        orientation = _orientation;
+        height = _height;
+        create();
+    }
+
+    VertexData GenVertexData(float u, float v) {
+        
+        //the base of the triangle is 1,2,3
+        vec3 centerOfBaseSurface = (vert1 + vert2 + vert3)/3.0f;
+        vert4 = centerOfBaseSurface + (orientation * height);
+        vec3 centerOfTetrahedron = (centerOfBaseSurface + vert4) / 2.0f;
+        
+        //collecting sides
+        
+        VertexData vd1;
+        VertexData vd2;
+        VertexData vd3;
+        VertexData vd4;
+        VertexData vd5;
+        VertexData vd6;
+
+
+        vd1.position = vert1;
+        vd1.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
+        vd1.texcoord = vec2(vert1.x,vert1.y);
+        
+        vd2.position = vert2;
+        vd2.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
+        vd2.texcoord = vec2(vert2.x,vert2.y);
+        
+        vd3.position = vert3;
+        vd3.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
+        vd3.texcoord = vec2(vert3.x,vert3.y);
+        
+        //triangle of 2,3,4
+        vd4.position = vert4;
+        vd4.normal = normalize(((vert2+vert3+vert4)/3.0f)-centerOfTetrahedron);
+        vd4.texcoord = vec2(vert4.x,vert4.y);
+        
+        //triangle of 3,4,1
+        vd5.position = vert1;
+        vd5.normal = normalize(((vert3+vert4+vert1)/3.0f)-centerOfTetrahedron);
+        vd5.texcoord = vec2(vert1.x,vert4.y);
+        
+        //triangle of 1,4,2
+        vd6.position = vert2;
+        vd6.normal = normalize(((vert1+vert4+vert2)/3.0f)-centerOfTetrahedron);
+        vd6.texcoord = vec2(vert2.x,vert2.y);
+        
+        vtxData.push_back(vd1);
+        vtxData.push_back(vd2);
+        vtxData.push_back(vd3);
+        vtxData.push_back(vd4);
+        vtxData.push_back(vd5);
+        vtxData.push_back(vd6);
+
+        VertexData retValue;
+        return retValue;
+    }
+    
+    VertexData GenVertexDataForTime(float u, float v, float tend) {
+        VertexData vd;
+        radius = 1.3f + ((sin((19.0f*u) + (24.0f*v)))/8 * cosf(tend*2));
+        
+        //TODO: determining normal of the surface
+        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * cosf(v * (float)M_PI));
+        vd.texcoord = vec2(u, v);
+        return vd;
+    }
+    
+    //virus waving movement
+    void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
+        nVtxPerStrip = (M + 1) * 2;
+        nStrips = N;
+        
+        while(vtxData.size() != 0){ vtxData.pop_back();} // vertices on the CPU
+        
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j <= M; j++) {
+                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)i / N, tend));
+                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)(i + 1) / N, tend));
+            }
+        }
+        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+        // Enable the vertex attribute arrays
+        glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
+        glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
+        glEnableVertexAttribArray(2);  // attribute array 2 = TEXCOORD0
+        // attribute array, components/attribute, component type, normalize?, stride, offset
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
+    }
+};
+
+
 
 
 //---------------------------
@@ -633,80 +779,6 @@ public:
     }
 };
 
-//---------------------------
-class Torus : public ParamSurface {
-//---------------------------
-    const float R = 1, r = 0.5;
-
-    vec3 Point(float u, float v, float rr) {
-        float ur = u * 2.0f * (float)M_PI, vr = v * 2.0f * (float)M_PI;
-        float l = R + rr * cosf(ur);
-        return vec3(l * cosf(vr), l * sinf(vr), rr * sinf(ur));
-    }
-public:
-    Torus() { create(); }
-
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        vd.position = Point(u, v, r);
-        vd.normal = (vd.position - Point(u, v, 0)) * (1.0f / r);
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
-    vec3 point(float u, float v) {
-        return Point(u, v, r);
-    }
-};
-
-//---------------------------
-class Mobius : public ParamSurface {
-//---------------------------
-    float R, w;
-public:
-    Mobius() { R = 1; w = 0.5; create(); }
-
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        Clifford U(u * (float)M_PI, 1), V((v - 0.5f) * w, 0);
-        Clifford x = (Cos(U) * V + R) * Cos(U * 2);
-        Clifford y = (Cos(U) * V + R) * Sin(U * 2);
-        Clifford z = Sin(U) * V;
-        vd.position = vec3(x.f, y.f, z.f);
-        vec3 drdU(x.d, y.d, z.d);
-        vec3 drdV(cos(U.f)*cosf(2 * U.f), cosf(U.f)*sin(2 * U.f), sinf(U.f));
-        vd.normal = cross(drdU, drdV);
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
-};
-
-//---------------------------
-class Dini : public ParamSurface {
-//---------------------------
-    Clifford a = 1.0f, b = 0.15f;
-public:
-    Dini() { create(); }
-
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        Clifford U(u * 4 * M_PI, 1), V(0.01f + (1 - 0.01f) * v, 0);
-        Clifford X = a * Cos(U) * Sin(V);
-        Clifford Y = a * Sin(U) * Sin(V);
-        Clifford Z = a * (Cos(V) + Log(Tan(V / 2))) + b * U + 3;
-        vd.position = vec3(X.f, Y.f, Z.f);
-        vec3 drdU = vec3(X.d, Y.d, Z.d);
-
-        U.d = 0, V.d = 1;
-        X = a * Cos(U) * Sin(V);
-        Y = a * Sin(U) * Sin(V);
-        Z = a * (Cos(V) + Log(Tan(V) / 2)) + b * U + 10;
-        vec3 drdV = vec3(X.d, Y.d, Z.d);
-
-        vd.normal = cross(drdU, drdV);
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
-};
 
 //---------------------------
 struct Object {
@@ -743,7 +815,10 @@ public:
     }
 
     //az animaciot biztosito fuggveny
-    virtual void Animate(float tstart, float tend) { rotationAngle = 0.8f * tend; }
+    virtual void Animate(float tstart, float tend)
+    {
+        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
+    }
 };
 
 //---------------------------
@@ -794,6 +869,48 @@ public:
     void addChildren(){}
 };
 
+//---------------------------
+struct AntibodyObject : Object{
+//---------------------------
+    Tetrahedron* antibodyParent; //transformed sphere body of the virus
+public:
+    //children
+    std::vector<Tetrahedron*> children;
+
+    //constr
+    AntibodyObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, Tetrahedron * _parent) :
+    Object(_shader, _material, _texture, _geometry){antibodyParent = _parent;}
+    
+    void SetModelingTransform(mat4& M, mat4& Minv) {
+        M = ScaleMatrix(scale) * RotationMatrix(rotationAngle, rotationAxis) * TranslateMatrix(translation);
+        Minv = TranslateMatrix(-translation) * RotationMatrix(-rotationAngle, rotationAxis) * ScaleMatrix(vec3(1 / scale.x, 1 / scale.y, 1 / scale.z));
+    }
+
+    void Draw(RenderState state) {
+        mat4 M, Minv;
+        SetModelingTransform(M, Minv);
+        state.M = M;
+        state.Minv = Minv;
+        state.MVP = state.M * state.V * state.P;
+        state.material = material;
+        state.texture = texture;
+        shader->Bind(state);
+        geometry->Draw();
+    }
+
+     void Animate(float tstart, float tend)
+    {
+        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
+        vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
+        translationVec = normalize(translationVec);
+        translation = translationVec;
+        rotationAxis = 1; //cosf(tend);
+        //virusParent->reCreate(tessellationLevel, tessellationLevel, tend);
+    }
+    //recursevely adding children
+    void addChildren(){}
+};
+
 
 //---------------------------
 class Scene {
@@ -829,56 +946,36 @@ public:
 
 
         // Geometries
-        Sphere * sphere = new Sphere();
-        Geometry * sphereGeometry = sphere;
-        
         VirusParent * virusParent = new VirusParent();
         Geometry * virusParentGeometry = virusParent;
         
-        Geometry * torus = new Torus();
-        Geometry * mobius = new Mobius();
         Geometry * tractricoid = new Tractricoid();
-
+        
+        //tetrahedron geometry
+        vec3 p1 = vec3(1.0f, 0.0f, 0.0f);
+        vec3 p2 = vec3(-1.0f, 0.0f, 0.0f);
+        vec3 p3 = vec3(0.0f, 0.0f, -1.3f);
+        Tetrahedron * tetrahedron = new Tetrahedron(p1,p2,p3,1.5f,vec3(0.0f,1.0f,0.0f));
+        Geometry * tetrahedronGeometry = tetrahedron;
+        
         // Create objects by setting up their vertex data on the GPU
-        Object * sphereObject1 = new Object(phongShader, material0, texture15x20, tractricoid);
-        sphereObject1->translation = vec3(-3, 3, 0);
-        sphereObject1->rotationAxis = vec3(0, 1, 1);
-        sphereObject1->scale = vec3(1.0f, 1.0f, 1.0f);
-        //objects.push_back(sphereObject1);
-
+        //Antibody object
+        Object * antibodyObject = new AntibodyObject(phongShader, material0, texture15x20, tetrahedronGeometry, tetrahedron);
+        antibodyObject->translation = vec3(2, 2, 0);
+        //sphereObject1->rotationAxis = vec3(0, 1, 1);
+        antibodyObject->scale = vec3(1.0f, 1.0f, 1.0f);
+        antibodyObject->shader = gouraudShader;
+        objects.push_back(antibodyObject);
+        
+        //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
+        //Virus object
         Object * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
         virusObject->translation = vec3(0, 0, 0);
         virusObject->rotationAxis = vec3(1, 1, -1);
         virusObject->scale = vec3(0.8f, 0.8f, 0.8f);
         virusObject->shader = phongShader;
         objects.push_back(virusObject);
-
-        Object * mobiusObject1 = new Object(phongShader, material0, texture4x8, mobius);
-        mobiusObject1->translation = vec3(3, 3, 0);
-        mobiusObject1->rotationAxis = vec3(1, 0, 0);
-        mobiusObject1->scale = vec3(0.7f, 0.7f, 0.7f);
-        //objects.push_back(mobiusObject1);
-
-        Object * sphereObject2 = new Object(*sphereObject1);
-        sphereObject2->translation = vec3(-3, -3, 0);
-        sphereObject2->shader = nprShader;
-        //objects.push_back(sphereObject2);
-
-        Object * mobiusObject2 = new Object(*mobiusObject1);
-        mobiusObject2->translation = vec3(3, -3, 0);
-        mobiusObject2->shader = nprShader;
-        //objects.push_back(mobiusObject2);
-
-        Object * sphereObject3 = new Object(*sphereObject1);
-        sphereObject3->translation = vec3(-3, 0, 0);
-        sphereObject3->shader = gouraudShader;
-        //objects.push_back(sphereObject3);
-
-        Object * mobiusObject3 = new Object(*mobiusObject1);
-        mobiusObject3->translation = vec3(3, 0, 0);
-        mobiusObject3->shader = gouraudShader;
-        //objects.push_back(mobiusObject3);
-
+        
         // Camera
         camera.wEye = vec3(0, 0, 6);
         camera.wLookat = vec3(0, 0, 0);
