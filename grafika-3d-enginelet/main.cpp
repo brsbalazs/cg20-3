@@ -436,12 +436,13 @@ public:
 //Parametrikus felulet alaposztaly
 class ParamSurface : public Geometry {
 //---------------------------
-protected:
-    unsigned int nVtxPerStrip, nStrips; // egy stripen belul osszesen hany csucspontot adunk meg, hany sora van az adott felbontasnak
-    std::vector<VertexData> vtxData;
-    bool isTetrahedron = false;
-    
+
 public:
+    
+    unsigned int nVtxPerStrip, nStrips; // egy stripen belul osszesen hany csucspontot adunk meg, hany sora van az adott felbontasnak
+       std::vector<VertexData> vtxData;
+       bool isTetrahedron = false;
+    
     ParamSurface() { nVtxPerStrip = nStrips = 0; }
     
     virtual VertexData GenVertexData(float u, float v) = 0;
@@ -449,7 +450,6 @@ public:
     void create(int N = tessellationLevel, int M = tessellationLevel) {
         nVtxPerStrip = (M + 1) * 2;
         nStrips = N;
-        vtxData;    // vertices on the CPU
         
         if(!isTetrahedron)
         {
@@ -596,6 +596,15 @@ public:
     void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
         nVtxPerStrip = (M + 1) * 2;
         nStrips = N;
+        
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+        
+        //vao letrehozas bindolas
+        glGenVertexArrays(1, &vao); //minden vaohoz egy vbo, amibe omlesztve lesznek az adatok: csupont helye, felulet normalvektora, textura koordinatak
+        glBindVertexArray(vao);
+        glGenBuffers(1, &vbo); // Generate 1 vertex buffer object
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
         
         while(vtxData.size() != 0){ vtxData.pop_back();} // vertices on the CPU
         
@@ -757,6 +766,15 @@ public:
         nVtxPerStrip = (M + 1) * 2;
         nStrips = N;
         
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+        
+        //vao letrehozas bindolas
+        glGenVertexArrays(1, &vao); //minden vaohoz egy vbo, amibe omlesztve lesznek az adatok: csupont helye, felulet normalvektora, textura koordinatak
+        glBindVertexArray(vao);
+        glGenBuffers(1, &vbo); // Generate 1 vertex buffer object
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        
         while(vtxData.size() != 0){ vtxData.pop_back();} // vertices on the CPU
         
         GenVertexDataForTime(0, 0, tend);
@@ -900,10 +918,11 @@ public:
 //---------------------------
 struct AntibodyObject : Object{
 //---------------------------
-    Tetrahedron* antibodyParent; //transformed sphere body of the virus
+    Tetrahedron * antibodyParent; //transformed sphere body of the virus
+    std::vector<AntibodyObject*> childrenDepth1;
+    std::vector<AntibodyObject*> childrenDepth2;
 public:
     //children
-    std::vector<Tetrahedron*> children;
 
     //constr
     AntibodyObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, Tetrahedron * _parent) :
@@ -934,9 +953,18 @@ public:
         //translation = translationVec;
         //rotationAxis = 1; //cosf(tend);
         antibodyParent->reCreate(tessellationLevel, tessellationLevel, tend);
+        
     }
     //recursevely adding children
-    void addChildren(){}
+    void createChildrenForTetrahedron(Tetrahedron * parent)
+    {
+        //for(int i = 0; i < parent->vtxData.size(); i++){}
+        //vec3 newTetrahedronVert1 = (vert1+vert2)/2.0f;
+        //vec3 newTetrahedronVert2 = (vert1+vert4)/2.0f;
+        //vec3 newTetrahedronVert3 = (vert2+vert4)/2.0f;
+        //Tetrahedron * child1 = new Tetrahedron()
+        
+    }
 };
 
 
@@ -988,11 +1016,10 @@ public:
         
         // Create objects by setting up their vertex data on the GPU
         //Antibody object
-        Object * antibodyObject = new AntibodyObject(gouraudShader, material0, texture15x20, tetrahedronGeometry, tetrahedron);
+        Object * antibodyObject = new AntibodyObject(gouraudShader, material1, texture15x20, tetrahedronGeometry, tetrahedron);
         antibodyObject->translation = vec3(-2, 0, 0);
         //sphereObject1->rotationAxis = vec3(0, 1, 1);
         antibodyObject->scale = vec3(1.0f, 1.0f, 1.0f);
-        antibodyObject->shader = gouraudShader;
         objects.push_back(antibodyObject);
         
         //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
@@ -1001,8 +1028,16 @@ public:
         virusObject->translation = vec3(3, 0, 0);
         virusObject->rotationAxis = vec3(1, 1, -1);
         virusObject->scale = vec3(0.8f, 0.8f, 0.8f);
-        virusObject->shader = phongShader;
-        //objects.push_back(virusObject);
+        objects.push_back(virusObject);
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         // Camera
         camera.wEye = vec3(0, 0, 6);
