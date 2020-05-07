@@ -670,6 +670,7 @@ public:
         VertexData vd5;
         VertexData vd6;
 
+        //TODO: a normalvektor kicsit rossz iranyba mutat, csak az alapnal teljesen jo, mindig a negyedik csucsbol kene a kozeppontba huzni
 
         vd1.position = vert1;
         vd1.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
@@ -680,22 +681,22 @@ public:
         vd2.texcoord = vec2(vert2.x,vert2.y);
         
         vd3.position = vert3;
-        vd3.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
+        vd3.normal = normalize(centerOfBaseSurface-vert4);
         vd3.texcoord = vec2(vert3.x,vert3.y);
         
         //triangle of 2,3,4
         vd4.position = vert4;
-        vd4.normal = normalize(((vert2+vert3+vert4)/3.0f)-centerOfTetrahedron);
+        vd4.normal = normalize(((vert2+vert3+vert4)/3.0f)-vert1);
         vd4.texcoord = vec2(vert4.x,vert4.y);
         
         //triangle of 3,4,1
         vd5.position = vert1;
-        vd5.normal = normalize(((vert3+vert4+vert1)/3.0f)-centerOfTetrahedron);
+        vd5.normal = normalize(((vert3+vert4+vert1)/3.0f)-vert2);
         vd5.texcoord = vec2(vert1.x,vert4.y);
         
         //triangle of 1,4,2
         vd6.position = vert2;
-        vd6.normal = normalize(((vert1+vert4+vert2)/3.0f)-centerOfTetrahedron);
+        vd6.normal = normalize(((vert1+vert4+vert2)/3.0f)-vert3);
         vd6.texcoord = vec2(vert2.x,vert2.y);
         
         vtxData.push_back(vd1);
@@ -712,7 +713,7 @@ public:
     void GenVertexDataForTime(float u, float v, float tend) {
         //the base of the triangle is 1,2,3
         vec3 centerOfBaseSurface = (vert1 + vert2 + vert3)/3.0f;
-        vert4 = centerOfBaseSurface + (orientation * height * fabs(cos(tend)));
+        vert4 = centerOfBaseSurface + (orientation * (1.0f + (height * fabs(cos(tend)))));
         vec3 centerOfTetrahedron = (centerOfBaseSurface + vert4) / 2.0f;
         
         //collecting sides
@@ -734,22 +735,22 @@ public:
         vd2.texcoord = vec2(vert2.x,vert2.y);
         
         vd3.position = vert3;
-        vd3.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
+        vd3.normal = normalize(centerOfBaseSurface-vert4);
         vd3.texcoord = vec2(vert3.x,vert3.y);
         
         //triangle of 2,3,4
         vd4.position = vert4;
-        vd4.normal = normalize(((vert2+vert3+vert4)/3.0f)-centerOfTetrahedron);
+        vd4.normal = normalize(((vert2+vert3+vert4)/3.0f)-vert1);
         vd4.texcoord = vec2(vert4.x,vert4.y);
         
         //triangle of 3,4,1
         vd5.position = vert1;
-        vd5.normal = normalize(((vert3+vert4+vert1)/3.0f)-centerOfTetrahedron);
+        vd5.normal = normalize(((vert3+vert4+vert1)/3.0f)-vert2);
         vd5.texcoord = vec2(vert1.x,vert4.y);
         
         //triangle of 1,4,2
         vd6.position = vert2;
-        vd6.normal = normalize(((vert1+vert4+vert2)/3.0f)-centerOfTetrahedron);
+        vd6.normal = normalize(((vert1+vert4+vert2)/3.0f)-vert3);
         vd6.texcoord = vec2(vert2.x,vert2.y);
         
         vtxData.push_back(vd1);
@@ -848,7 +849,7 @@ public:
         Minv = TranslateMatrix(-translation) * RotationMatrix(-rotationAngle, rotationAxis) * ScaleMatrix(vec3(1 / scale.x, 1 / scale.y, 1 / scale.z));
     }
 
-    void Draw(RenderState state) {
+    virtual void Draw(RenderState state) {
         mat4 M, Minv;
         SetModelingTransform(M, Minv);
         state.M = M;
@@ -919,10 +920,15 @@ public:
 struct AntibodyObject : Object{
 //---------------------------
     Tetrahedron * antibodyParent; //transformed sphere body of the virus
-    std::vector<AntibodyObject*> childrenDepth1;
-    std::vector<AntibodyObject*> childrenDepth2;
+    std::vector<Tetrahedron*> childrenDepth1;
+    std::vector<Tetrahedron*> childrenDepth2;
+    std::vector<Tetrahedron*> childrenDepth3;
+    float childPath1Height = 1.0f;
+    float childPath2Height = 0.5f;
+    float childPath3Height = 0.2f;
+
+    
 public:
-    //children
 
     //constr
     AntibodyObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, Tetrahedron * _parent) :
@@ -942,29 +948,86 @@ public:
         state.material = material;
         state.texture = texture;
         shader->Bind(state);
+        for(int i = 0; i < childrenDepth1.size(); i++)
+        {
+            childrenDepth1[i]->Draw();
+        }
+        for(int i = 0; i < childrenDepth2.size(); i++)
+        {
+            childrenDepth2[i]->Draw();
+        }
+        for(int i = 0; i < childrenDepth3.size(); i++)
+        {
+            childrenDepth3[i]->Draw();
+        }
         geometry->Draw();
+        
+        
     }
 
      void Animate(float tstart, float tend)
     {
         rotationAngle = 0.8f * tend; //saját tengely körüli forgás
-        //vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
-        //translationVec = normalize(translationVec);
-        //translation = translationVec;
-        //rotationAxis = 1; //cosf(tend);
+        vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
+        translationVec = normalize(translationVec);
+        translation = translationVec;
+        rotationAxis = 1; //cosf(tend);
         antibodyParent->reCreate(tessellationLevel, tessellationLevel, tend);
-        
+        createChildrenForParentTetrahedron(tend);
+        createChildrenForDepth1Tetrahedrons(tend);
+        createChildrenForDepth2Tetrahedrons(tend);
     }
     //recursevely adding children
-    void createChildrenForTetrahedron(Tetrahedron * parent)
+    void createChildrenForParentTetrahedron(float tend)
     {
-        //for(int i = 0; i < parent->vtxData.size(); i++){}
-        //vec3 newTetrahedronVert1 = (vert1+vert2)/2.0f;
-        //vec3 newTetrahedronVert2 = (vert1+vert4)/2.0f;
-        //vec3 newTetrahedronVert3 = (vert2+vert4)/2.0f;
-        //Tetrahedron * child1 = new Tetrahedron()
+        while(childrenDepth1.size() != 0){ childrenDepth1.pop_back();}
+        
+        for(int i = 2; i < antibodyParent->vtxData.size(); i++)
+        {
+            vec3 newTetrahedronVert1 = (antibodyParent->vtxData[i-2].position+antibodyParent->vtxData[i-1].position)/2.0f;
+            vec3 newTetrahedronVert2 = (antibodyParent->vtxData[i-1].position+antibodyParent->vtxData[i].position)/2.0f;
+            vec3 newTetrahedronVert3 = (antibodyParent->vtxData[i-2].position+antibodyParent->vtxData[i].position)/2.0f;
+            Tetrahedron* child = new Tetrahedron(newTetrahedronVert1, newTetrahedronVert2,newTetrahedronVert3, 0.5f +  (childPath1Height * fabs(cos(tend))), antibodyParent->vtxData[i].normal);
+            childrenDepth1.push_back(child);
+        }
+    }
+    
+    void createChildrenForDepth1Tetrahedrons(float tend)
+    {
+        while(childrenDepth2.size() != 0){ childrenDepth2.pop_back();}
+        
+        for(int j = 0; j < childrenDepth1.size(); j++)
+        {
+            for(int i = 2; i < childrenDepth1[j]->vtxData.size(); i++)
+            {
+                vec3 newTetrahedronVert1 = (childrenDepth1[j]->vtxData[i-2].position+childrenDepth1[j]->vtxData[i-1].position)/2.0f;
+                vec3 newTetrahedronVert2 = (childrenDepth1[j]->vtxData[i-1].position+childrenDepth1[j]->vtxData[i].position)/2.0f;
+                vec3 newTetrahedronVert3 = (childrenDepth1[j]->vtxData[i-2].position+childrenDepth1[j]->vtxData[i].position)/2.0f;
+                childrenDepth2.push_back(new Tetrahedron(newTetrahedronVert1, newTetrahedronVert2,newTetrahedronVert3, 0.2f + (childPath2Height * fabs(cos(tend))), childrenDepth1[j]->vtxData[i].normal));
+            }
+            
+        }
         
     }
+    
+    void createChildrenForDepth2Tetrahedrons(float tend)
+    {
+        while(childrenDepth3.size() != 0){ childrenDepth3.pop_back();}
+        
+        for(int j = 0; j < childrenDepth2.size(); j++)
+        {
+            for(int i = 2; i < childrenDepth2[j]->vtxData.size(); i++)
+            {
+                vec3 newTetrahedronVert1 = (childrenDepth2[j]->vtxData[i-2].position+childrenDepth2[j]->vtxData[i-1].position)/2.0f;
+                vec3 newTetrahedronVert2 = (childrenDepth2[j]->vtxData[i-1].position+childrenDepth2[j]->vtxData[i].position)/2.0f;
+                vec3 newTetrahedronVert3 = (childrenDepth2[j]->vtxData[i-2].position+childrenDepth2[j]->vtxData[i].position)/2.0f;
+                childrenDepth3.push_back(new Tetrahedron(newTetrahedronVert1, newTetrahedronVert2,newTetrahedronVert3, 0.1f + (childPath2Height * fabs(cos(tend))), childrenDepth2[j]->vtxData[i].normal));
+            }
+            
+        }
+        
+    }
+    
 };
 
 
@@ -1011,7 +1074,7 @@ public:
         vec3 p1 = vec3(2.0f, 0.0f, 0.0f);
         vec3 p2 = vec3(0.0f, 0.0f, 0.0f);
         vec3 p3 = vec3(1.0f, 0.0f, -1.3f);
-        Tetrahedron * tetrahedron = new Tetrahedron(p1,p2,p3,2.5f,vec3(0.0f,1.0f,0.0f));
+        Tetrahedron * tetrahedron = new Tetrahedron(p1,p2,p3,1.0f,vec3(0.0f,1.0f,0.0f));
         Geometry * tetrahedronGeometry = tetrahedron;
         
         // Create objects by setting up their vertex data on the GPU
@@ -1019,7 +1082,7 @@ public:
         Object * antibodyObject = new AntibodyObject(gouraudShader, material1, texture15x20, tetrahedronGeometry, tetrahedron);
         antibodyObject->translation = vec3(-2, 0, 0);
         //sphereObject1->rotationAxis = vec3(0, 1, 1);
-        antibodyObject->scale = vec3(1.0f, 1.0f, 1.0f);
+        antibodyObject->scale = vec3(0.6f, 0.6f, 0.6f);
         objects.push_back(antibodyObject);
         
         //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
@@ -1027,7 +1090,7 @@ public:
         Object * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
         virusObject->translation = vec3(3, 0, 0);
         virusObject->rotationAxis = vec3(1, 1, -1);
-        virusObject->scale = vec3(0.8f, 0.8f, 0.8f);
+        virusObject->scale = vec3(0.7f, 0.7f, 0.7f);
         objects.push_back(virusObject);
         
         
