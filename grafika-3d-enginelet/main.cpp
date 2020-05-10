@@ -20,6 +20,8 @@ static float dT = 0.0f;
 
 
 
+
+
 //---------------------------
 struct Camera { // 3D camera
 //---------------------------
@@ -29,7 +31,7 @@ public:
     Camera() {
         asp = (float)windowWidth / windowHeight;
         fov = 75.0f * (float)M_PI / 180.0f;
-        fp = 1; bp = 10;
+        fp = 1; bp = 12;
     }
     mat4 V() { // view matrix: translates the center to the origin
         vec3 w = normalize(wEye - wLookat);
@@ -78,6 +80,22 @@ public:
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++) {
             image[y * width + x] = (x & 1) ^ (y & 1) ? yellow : blue;
+        }
+        create(width, height, image, GL_NEAREST);
+    }
+};
+
+//---------------------------
+class TransitionTexture : public Texture { //textura tipus implementacioja, letrehozasa
+//---------------------------
+public:
+    TransitionTexture(const int width = 0, const int height = 0) : Texture() {
+        std::vector<vec4> image(width * height);
+        const vec4 yellow(1, 1, 0, 1), blue(0, 0, 1, 1);
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++) {
+                
+                image[y * width + x] = vec4(2.5f*x/width,1, 1,1);
         }
         create(width, height, image, GL_NEAREST);
     }
@@ -554,7 +572,7 @@ typedef Dnum<vec2> Dnum2;
 class Sphere : public ParamSurface {
 //---------------------------
     
-    float radius = 1.2f;
+    float radius = 2.0f;
 public:
     Sphere() { create(); }
 
@@ -882,7 +900,8 @@ public:
     //az animaciot biztosito fuggveny
     virtual void Animate(float tstart, float tend)
     {
-        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
+        rotationAngle = -2.2f; //saját tengely körüli forgás
+        rotationAxis = vec3(1,-1,1);
     }
 };
 
@@ -1118,18 +1137,26 @@ public:
         material1->ks = vec3(0.3f, 0.3f, 0.3f);
         material1->ka = vec3(0.2f, 0.2f, 0.2f);
         material1->shininess = 30;
+        
+        // Materials
+        Material * material2 = new Material;
+        material2->kd = vec3(1.0f, 0.4f, 0.2f);
+        material2->ks = vec3(4, 4, 4);
+        material2->ka = vec3(0.3f, 0.1f, 0.1f);
+        material2->shininess = 100;
 
         // Textures
         Texture * texture4x8 = new CheckerBoardTexture(4, 8); //parameterezheto sakktabla textura
         Texture * texture15x20 = new CheckerBoardTexture(15, 20); //mas parameterekkel
         Texture * stripyTexture = new StripyTexture(150, 150);
         Texture * rainbowTexture = new RainbowTexture(200,200);
+        Texture * transitionTexture = new TransitionTexture(200,200);
 
 
         // Geometries
         VirusParent * virusParent = new VirusParent();
         Geometry * virusParentGeometry = virusParent;
-        
+        Geometry * sphereSpace = new Sphere();
         Geometry * tractricoid = new Tractricoid();
         
         //tetrahedron geometry
@@ -1141,7 +1168,7 @@ public:
         
         // Create objects by setting up their vertex data on the GPU
         //Antibody object
-        Object * antibodyObject = new AntibodyObject(gouraudShader, material1, texture15x20, tetrahedronGeometry, tetrahedron);
+        Object * antibodyObject = new AntibodyObject(gouraudShader, material2, texture15x20, tetrahedronGeometry, tetrahedron);
         antibodyObject->translation = vec3(-3, 2.5, 0);
         //sphereObject1->rotationAxis = vec3(0, 1, 1);
         antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
@@ -1155,6 +1182,12 @@ public:
         virusObject->scale = vec3(0.7f, 0.7f, 0.7f);
         objects.push_back(virusObject);
         
+        //Sphere space
+        Object * sphere = new Object(phongShader, material1, transitionTexture, sphereSpace);
+        sphere->translation = vec3(0, 0, 0);
+        //virusObject->rotationAxis = vec3(1, 1, -1);
+        sphere->scale = vec3(3.0f, 3.0f, 2.6f);
+        objects.push_back(sphere);
     
         
         // Camera
