@@ -10,6 +10,15 @@
 #include "framework.h"
 
 const int tessellationLevel = 20;
+static bool isxPressed = false;
+static bool isXPressed = false;
+static bool isyPressed = false;
+static bool isYPressed = false;
+static bool iszPressed = false;
+static bool isZPressed = false;
+static float dT = 0.0f;
+
+
 
 //---------------------------
 struct Camera { // 3D camera
@@ -641,6 +650,9 @@ class Tetrahedron : public ParamSurface {
     float height;
     
 public:
+    
+    
+    
     //orientation: egy egysegvektor ami megmutatja, hogy az alaptol milyen iranyba kell mennunk magassagnyival,
     // megadhato neki a parent surface normalvektora pl.
     Tetrahedron(vec3 _vert1, vec3 _vert2, vec3 _vert3, float _height, vec3 _orientation)
@@ -652,6 +664,10 @@ public:
         orientation = _orientation;
         height = _height;
         create();
+    }
+    
+    vec3 getCenter (){
+        return vec3((vert1+vert2+vert3+vert4)/4.0f);
     }
 
     VertexData GenVertexData(float u, float v) {
@@ -759,6 +775,8 @@ public:
         vtxData.push_back(vd4);
         vtxData.push_back(vd5);
         vtxData.push_back(vd6);
+
+        
         return;
     }
     
@@ -923,7 +941,7 @@ struct AntibodyObject : Object{
     std::vector<Tetrahedron*> childrenDepth1;
     std::vector<Tetrahedron*> childrenDepth2;
     std::vector<Tetrahedron*> childrenDepth3;
-    float childPath1Height = 1.0f;
+    float childPath1Height = 0.9f;
     float childPath2Height = 0.5f;
     float childPath3Height = 0.2f;
 
@@ -967,27 +985,62 @@ public:
 
      void Animate(float tstart, float tend)
     {
-        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
-        vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
-        translationVec = normalize(translationVec);
-        translation = translationVec;
-        rotationAxis = 1; //cosf(tend);
+        rotationAngle = 2.4f; //saját tengely körüli forgás
+        rotationAxis = 1;
+
+        
+        dT += tend-tstart;
+        if(dT > 0.1f)
+        {
+            dT = 0.0f;
+            //Bown movement
+            float correctionFactor = 0.05f;
+
+            //parameter X
+            float lower = -0.10f;
+            float higher = 0.10f;
+            if(isxPressed) { lower += correctionFactor;  higher += correctionFactor; }
+            else if (isXPressed){  lower -= correctionFactor;   higher -= correctionFactor; }
+            float randomX = lower + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(higher-lower)));
+            
+            //parameter Y
+            lower = -0.10f; //reinit
+            higher = 0.10f; //reinit
+            if(isyPressed) { lower += correctionFactor;  higher += correctionFactor; }
+            else if(isYPressed){  lower -= correctionFactor;   higher -= correctionFactor; }
+            float randomY = lower + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(higher-lower)));
+            
+            //parameter Z
+            lower = -0.10f;
+            higher = 0.10f;
+            if(iszPressed) { lower += correctionFactor;  higher += correctionFactor; }
+            else if(isZPressed){  lower -= correctionFactor;   higher -= correctionFactor; }
+            float randomZ = lower + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(higher-lower)));
+
+            vec3 speedVector =  vec3(randomX, randomY, randomZ);
+            translation = translation + speedVector;
+
+        }
+        
         antibodyParent->reCreate(tessellationLevel, tessellationLevel, tend);
         createChildrenForParentTetrahedron(tend);
         createChildrenForDepth1Tetrahedrons(tend);
-        createChildrenForDepth2Tetrahedrons(tend);
+        //createChildrenForDepth2Tetrahedrons(tend);
     }
-    //recursevely adding children
+    
+    
     void createChildrenForParentTetrahedron(float tend)
     {
         while(childrenDepth1.size() != 0){ childrenDepth1.pop_back();}
+        
+        
         
         for(int i = 2; i < antibodyParent->vtxData.size(); i++)
         {
             vec3 newTetrahedronVert1 = (antibodyParent->vtxData[i-2].position+antibodyParent->vtxData[i-1].position)/2.0f;
             vec3 newTetrahedronVert2 = (antibodyParent->vtxData[i-1].position+antibodyParent->vtxData[i].position)/2.0f;
             vec3 newTetrahedronVert3 = (antibodyParent->vtxData[i-2].position+antibodyParent->vtxData[i].position)/2.0f;
-            Tetrahedron* child = new Tetrahedron(newTetrahedronVert1, newTetrahedronVert2,newTetrahedronVert3, 0.5f +  (childPath1Height * fabs(cos(tend))), antibodyParent->vtxData[i].normal);
+            Tetrahedron* child = new Tetrahedron(newTetrahedronVert1, newTetrahedronVert2,newTetrahedronVert3, 0.8f +  (childPath1Height * fabs(cos(tend))), antibodyParent->vtxData[i].normal);
             childrenDepth1.push_back(child);
         }
     }
@@ -995,6 +1048,7 @@ public:
     void createChildrenForDepth1Tetrahedrons(float tend)
     {
         while(childrenDepth2.size() != 0){ childrenDepth2.pop_back();}
+
         
         for(int j = 0; j < childrenDepth1.size(); j++)
         {
@@ -1071,18 +1125,18 @@ public:
         Geometry * tractricoid = new Tractricoid();
         
         //tetrahedron geometry
-        vec3 p1 = vec3(2.0f, 0.0f, 0.0f);
-        vec3 p2 = vec3(0.0f, 0.0f, 0.0f);
-        vec3 p3 = vec3(1.0f, 0.0f, -1.3f);
+        vec3 p3 = vec3(2.0f, 0.0f, 0.0f);
+        vec3 p1 = vec3(0.0f, 0.0f, 0.0f);
+        vec3 p2 = vec3(1.0f, 0.0f, -1.3f);
         Tetrahedron * tetrahedron = new Tetrahedron(p1,p2,p3,1.0f,vec3(0.0f,1.0f,0.0f));
         Geometry * tetrahedronGeometry = tetrahedron;
         
         // Create objects by setting up their vertex data on the GPU
         //Antibody object
         Object * antibodyObject = new AntibodyObject(gouraudShader, material1, texture15x20, tetrahedronGeometry, tetrahedron);
-        antibodyObject->translation = vec3(-2, 0, 0);
+        antibodyObject->translation = vec3(-3, 2.5, 0);
         //sphereObject1->rotationAxis = vec3(0, 1, 1);
-        antibodyObject->scale = vec3(0.6f, 0.6f, 0.6f);
+        antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
         objects.push_back(antibodyObject);
         
         //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
@@ -1093,14 +1147,7 @@ public:
         virusObject->scale = vec3(0.7f, 0.7f, 0.7f);
         objects.push_back(virusObject);
         
-        
-        
-        
-        
-        
-        
-        
-        
+    
         
         // Camera
         camera.wEye = vec3(0, 0, 6);
@@ -1157,10 +1204,35 @@ void onDisplay() {
 }
 
 // Key of ASCII code pressed
-void onKeyboard(unsigned char key, int pX, int pY) { }
+void onKeyboard(unsigned char key, int pX, int pY)
+{
+    switch (key)
+    {
+        case 'x': isxPressed = true; break;
+        case 'X': isXPressed = true; break;
+        case 'y': isyPressed = true; break;
+        case 'Y': isYPressed = true; break;
+        case 'z': iszPressed = true; break;
+        case 'Z': isZPressed = true; break;
+
+    }
+}
 
 // Key of ASCII code released
-void onKeyboardUp(unsigned char key, int pX, int pY) { }
+void onKeyboardUp(unsigned char key, int pX, int pY)
+{
+    switch (key)
+    {
+        case 'x': isxPressed = false; break;
+        case 'X': isXPressed = false; break;
+        case 'y': isyPressed = false; break;
+        case 'Y': isYPressed = false; break;
+        case 'z': iszPressed = false; break;
+        case 'Z': isZPressed = false; break;
+
+    }
+
+}
 
 // Mouse click event
 void onMouse(int button, int state, int pX, int pY) { }
