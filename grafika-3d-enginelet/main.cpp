@@ -18,6 +18,11 @@ static bool iszPressed = false;
 static bool isZPressed = false;
 static float dT = 0.0f;
 
+static bool isAnimated = true;
+
+
+
+
 
 
 
@@ -588,6 +593,15 @@ public:
     
 };
 
+
+
+static float virusRadius;
+static vec3 virusCenter;
+static float antibodyRadius;
+static vec3 antibodyCenter;
+
+
+
 //---------------------------
 class VirusParent : public ParamSurface {
 //---------------------------
@@ -595,6 +609,8 @@ class VirusParent : public ParamSurface {
 public:
     VirusParent() { create(); }
 
+    float getRadius(){return radius;}
+    
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
         radius = (1.3f + (sin((19.0f*u) + (24.0f*v)))/8);
@@ -911,6 +927,9 @@ struct VirusObject : Object{
     VirusParent* virusParent; //transformed sphere body of the virus
 public:
     
+    vec3 getParentCenter(){ return translation;}
+    float getRadius(){ return 0.7f;}
+    
     //children
     std::vector<Tractricoid*> children;
 
@@ -941,6 +960,8 @@ public:
     //TODO: animacio: mozgas, hullamzas, talan forgas is
      void Animate(float tstart, float tend)
     {
+        
+        if(!isAnimated) return;
         /*
         rotationAngle = 0.8f * tend; //saját tengely körüli forgás
         vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
@@ -955,6 +976,9 @@ public:
         translation = translationVec;
         rotationAxis = normalize(vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f)));
         virusParent->reCreate(tessellationLevel, tessellationLevel, tend);
+        
+        virusRadius = getRadius();
+        virusCenter = getParentCenter();
     }
     
     //TODO: collection tractricoid objects aroud the sphere
@@ -975,6 +999,11 @@ struct AntibodyObject : Object{
     
 public:
 
+    vec3 getParentCenter(){
+        return antibodyParent->getCenter();}
+    
+    float getRadius(){ return 0.7f; }
+    
     //constr
     AntibodyObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, Tetrahedron * _parent) :
     Object(_shader, _material, _texture, _geometry){antibodyParent = _parent;}
@@ -1012,6 +1041,8 @@ public:
 
      void Animate(float tstart, float tend)
     {
+        if(!isAnimated) return;
+            
         rotationAngle = 2.4f; //saját tengely körüli forgás
         rotationAxis = 1;
 
@@ -1053,6 +1084,20 @@ public:
         createChildrenForParentTetrahedron(tend);
         createChildrenForDepth1Tetrahedrons(tend);
         //createChildrenForDepth2Tetrahedrons(tend);
+        
+        antibodyRadius = getRadius();
+        antibodyCenter = getParentCenter();
+        
+        //TODO: Ha x távolságra van a közepük egymástól, ne fusson tovább az animáció függvény
+        vec3 a = antibodyCenter;
+        vec3 b = virusCenter;
+        float distance = sqrtf( powf(a.x-b.x,2.0f) + powf(a.y-b.y,2.0f) + powf(a.z-b.z, 2.0f));
+        if (false && distance < virusRadius+antibodyRadius)
+        {
+            isAnimated = false;
+            
+        }
+        
     }
     
     
@@ -1168,7 +1213,7 @@ public:
         
         // Create objects by setting up their vertex data on the GPU
         //Antibody object
-        Object * antibodyObject = new AntibodyObject(gouraudShader, material2, texture15x20, tetrahedronGeometry, tetrahedron);
+        AntibodyObject * antibodyObject = new AntibodyObject(gouraudShader, material2, texture15x20, tetrahedronGeometry, tetrahedron);
         antibodyObject->translation = vec3(-3, 2.5, 0);
         //sphereObject1->rotationAxis = vec3(0, 1, 1);
         antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
@@ -1176,7 +1221,7 @@ public:
         
         //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
         //Virus object
-        Object * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
+        VirusObject * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
         virusObject->translation = vec3(3, 0, 0);
         //virusObject->rotationAxis = vec3(1, 1, -1);
         virusObject->scale = vec3(0.7f, 0.7f, 0.7f);
@@ -1223,6 +1268,8 @@ public:
         camera.Animate(tend);
         for (unsigned int i = 0; i < lights.size(); i++) { lights[i].Animate(tend); }
         for (Object * obj : objects) obj->Animate(tstart, tend);
+
+        
     }
 };
 
