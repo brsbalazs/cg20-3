@@ -922,11 +922,19 @@ public:
     //TODO: animacio: mozgas, hullamzas, talan forgas is
      void Animate(float tstart, float tend)
     {
+        /*
         rotationAngle = 0.8f * tend; //saját tengely körüli forgás
         vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
         translationVec = normalize(translationVec);
         translation = translationVec;
-        rotationAxis = 1; //cosf(tend);
+        rotationAxis = cosf(tend);
+        virusParent->reCreate(tessellationLevel, tessellationLevel, tend);*/
+        
+        rotationAngle = cosf(tend); //saját tengely körüli forgás
+        vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
+        translationVec = normalize(translationVec);
+        translation = translationVec;
+        rotationAxis = normalize(vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f)));
         virusParent->reCreate(tessellationLevel, tessellationLevel, tend);
     }
     
@@ -1143,7 +1151,7 @@ public:
         //Virus object
         Object * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
         virusObject->translation = vec3(3, 0, 0);
-        virusObject->rotationAxis = vec3(1, 1, -1);
+        //virusObject->rotationAxis = vec3(1, 1, -1);
         virusObject->scale = vec3(0.7f, 0.7f, 0.7f);
         objects.push_back(virusObject);
         
