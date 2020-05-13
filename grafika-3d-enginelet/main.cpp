@@ -613,7 +613,7 @@ public:
     
     VertexData GenVertexData(float u, float v) {
         VertexData vd;
-        radius = (1.3f + (sin((19.0f*u) + (24.0f*v)))/8);
+        radius = (1.3f + (sinf((19.0f*u) + (24.0f*v)))/8);
         
         //TODO: determining normal of the surface
         vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
@@ -631,6 +631,50 @@ public:
         vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
                                        radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
                                        radius * cosf(v * (float)M_PI));
+        
+        //derivaltak radius fuggvenyt is beleszamolva
+        float xPDerU = sinf((float)M_PI*v) * (2.375f * cosf(2.0f * tend) * cosf(2.0f * (float)M_PI * u) * cosf(19.0f*u + 24.0f*v)
+                                         - (0.785398f * sinf(2.0f* (float)M_PI * u) * (cosf(2.0f*tend)*sinf(19.0f*u + 24.0f * v) + 10.4f)));
+        
+        float xPDerV = cosf(2.0f * (float)M_PI * u) * (3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v)*cosf(19.0f * u + 24.0f * v) +
+                                         (cosf((float)M_PI * v) *(0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
+        
+        float yPDerU = sinf((float)M_PI * v) * ( 2.375f * cosf( 2.0f * tend) * sinf(2.0f * (float)M_PI * u) * cosf(19.0f * u + 24.0f * v) +
+                                         (cosf(2.0f * (float)M_PI * u) * ( 0.785398f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 8.16814f)));
+        
+        float yPDerV = sinf(2.0f * (float)M_PI * u) * ( 3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v) +
+                                         (cosf((float)M_PI * v) * (0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
+        
+        float zPDerU = 2.375f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v);
+        
+        float zPDerV = 3.0f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f*v) -
+                                        (0.392699f * sinf((float)M_PI * v) * (cosf( 2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 10.4f));
+        
+        //normalvektorok a sugarat csak ertekkent szamolva
+        /*
+        xPDerU = - 2.0f * M_PI * radius * sinf(2.0f * M_PI * u) * sinf(M_PI * v);
+        xPDerV = M_PI * radius * cosf(2.0f * M_PI * u)*cosf(M_PI * v);
+        yPDerU = 2.0f * M_PI * radius * cosf(2.0f * M_PI * u) * sinf(M_PI * v);
+        yPDerV = M_PI * radius * sinf(2.0f * M_PI * u)*sinf(M_PI * v);
+        zPDerU = 0;
+        zPDerV = - M_PI * radius * sinf(M_PI * v);
+         */
+        
+        
+        float normalX = xPDerU * xPDerV;
+        float normalY = yPDerU * yPDerV;
+        float normalZ = zPDerU * zPDerV;
+        
+        vec3 one = vec3(1.0f, 1.0f, 1.0f);
+        vd.normal = normalize(cross(vec3(xPDerU, yPDerU, zPDerU), vec3(xPDerV, yPDerV, zPDerV)));
+        
+        float posAbs = sqrtf( powf(vd.position.x, 2.0f) + powf(vd.position.y, 2.0f) + powf(vd.position.z, 2.0f));
+        float posPlusNormalAbs = sqrtf( powf(normalX + vd.position.x, 2.0f) + powf(normalY + vd.position.y, 2.0f) +
+                                       powf(normalZ + vd.position.z, 2.0f));
+        
+        //if ( posPlusNormalAbs < posAbs) vd.normal = normalize(vec3(-normalX, -normalY, -normalZ));
+        //else vd.normal = normalize(vec3(normalX, normalY, normalZ));
+        
         vd.texcoord = vec2(u, v);
         return vd;
     }
@@ -918,6 +962,11 @@ public:
     {
         rotationAngle = -2.2f; //saját tengely körüli forgás
         rotationAxis = vec3(1,-1,1);
+        
+        
+        
+        
+        
     }
 };
 
@@ -932,6 +981,7 @@ public:
     
     //children
     std::vector<Tractricoid*> children;
+    int maxNumOfChildrenInARing = 20;
 
     //constr
     VirusObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, VirusParent * _parent) :
@@ -982,7 +1032,13 @@ public:
     }
     
     //TODO: collection tractricoid objects aroud the sphere
-    void addChildren(){}
+    void addChildren(float tend)
+    {
+        for( float verticalAngle = 22.5f; verticalAngle < 180.0f; verticalAngle += 22.5f)
+        {
+            
+        }
+    }
 };
 
 //---------------------------
@@ -1043,7 +1099,7 @@ public:
     {
         if(!isAnimated) return;
             
-        rotationAngle = 2.4f; //saját tengely körüli forgás
+        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
         rotationAxis = 1;
 
         
@@ -1052,7 +1108,7 @@ public:
         {
             dT = 0.0f;
             //Bown movement
-            float correctionFactor = 0.05f;
+            float correctionFactor = 0.10f;
 
             //parameter X
             float lower = -0.10f;
@@ -1157,6 +1213,9 @@ public:
 };
 
 
+
+
+
 //---------------------------
 class Scene {
 //---------------------------
@@ -1172,10 +1231,10 @@ public:
 
         // Materials
         Material * material0 = new Material;
-        material0->kd = vec3(0.6f, 0.4f, 0.2f);
+        material0->kd = vec3(0.4f, 0.6f, 0.4f);
         material0->ks = vec3(4, 4, 4);
-        material0->ka = vec3(0.1f, 0.1f, 0.1f);
-        material0->shininess = 100;
+        material0->ka = vec3(0.2f, 0.2f, 0.2f);
+        material0->shininess = 10;
 
         Material * material1 = new Material;
         material1->kd = vec3(0.8f, 0.6f, 0.4f);
@@ -1214,14 +1273,14 @@ public:
         // Create objects by setting up their vertex data on the GPU
         //Antibody object
         AntibodyObject * antibodyObject = new AntibodyObject(gouraudShader, material2, texture15x20, tetrahedronGeometry, tetrahedron);
-        antibodyObject->translation = vec3(-3, 2.5, 0);
+        antibodyObject->translation = vec3(-2, 2.0, 0);
         //sphereObject1->rotationAxis = vec3(0, 1, 1);
         antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
         objects.push_back(antibodyObject);
         
         //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
         //Virus object
-        VirusObject * virusObject = new VirusObject(phongShader, material0, stripyTexture, virusParentGeometry, virusParent);
+        VirusObject * virusObject = new VirusObject(phongShader, material1, stripyTexture, virusParentGeometry, virusParent);
         virusObject->translation = vec3(3, 0, 0);
         //virusObject->rotationAxis = vec3(1, 1, -1);
         virusObject->scale = vec3(0.7f, 0.7f, 0.7f);
@@ -1229,10 +1288,20 @@ public:
         
         //Sphere space
         Object * sphere = new Object(phongShader, material1, transitionTexture, sphereSpace);
-        sphere->translation = vec3(0, 0, 0);
+        sphere->translation = vec3(0, 0, 1);
         //virusObject->rotationAxis = vec3(1, 1, -1);
         sphere->scale = vec3(3.0f, 3.0f, 2.6f);
         objects.push_back(sphere);
+        
+        //Sphere space
+        Object * tractric = new Object(phongShader, material1, transitionTexture, tractricoid);
+        tractric->translation = vec3(0, 0, 0);
+        tractric->rotationAxis = vec3(1, 0, 0);
+        
+
+        tractric->scale = vec3(0.2f, 0.2f, 0.2f);
+        //objects.push_back(tractric);
+        
     
         
         // Camera
@@ -1241,18 +1310,18 @@ public:
         camera.wVup = vec3(0, 1, 0);
 
         // Lights
-        lights.resize(3);
+        lights.resize(2);
         lights[0].wLightPos = vec4(5, 5, 4, 0);    // ideal point -> directional light source
         lights[0].La = vec3(0.1f, 0.1f, 1);
-        lights[0].Le = vec3(3, 0, 0);
+        lights[0].Le = vec3(1, 1, 1);
 
-        lights[1].wLightPos = vec4(5, 10, 20, 0);    // ideal point -> directional light source
-        lights[1].La = vec3(0.2f, 0.2f, 0.2f);
-        lights[1].Le = vec3(0, 3, 0);
+        //lights[1].wLightPos = vec4(0, 3, 10, 0);    // ideal point -> directional light source
+        //lights[1].La = vec3(0.1f, 0.1f, 0.1f);
+        //lights[1].Le = vec3(1, 1, 1);
 
-        lights[2].wLightPos = vec4(-5, 5, 5, 0);    // ideal point -> directional light source
-        lights[2].La = vec3(0.1f, 0.1f, 0.1f);
-        lights[2].Le = vec3(0, 0, 3);
+        lights[1].wLightPos = vec4(-5, 5, 5, 0);    // ideal point -> directional light source
+        lights[1].La = vec3(0.1f, 0.1f, 0.1f);
+        lights[1].Le = vec3(1, 1, 1);
     }
 
     void Render() {
