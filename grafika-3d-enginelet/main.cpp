@@ -865,6 +865,7 @@ struct TractricoidObject : Object {
     mat4 normalRotationMatrix;
     Object * parent;
     
+    
 public:
     TractricoidObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, vec3 normal, Object * _parent) :
         Object(_shader, _material, _texture, _geometry) {
@@ -891,9 +892,11 @@ public:
     }
 
     virtual void Draw(RenderState state) {
+        
+        
         mat4 M, Minv;
         SetModelingTransform(M, Minv);
-        state.M = M;
+        state.M = M * parent->getMMatrix();
         state.Minv = Minv;
         state.MVP = state.M * state.V * state.P;
         state.material = material;
@@ -903,10 +906,8 @@ public:
     }
 
     //az animaciot biztosito fuggveny
-    virtual void Animate(float tstart, float tend)
+    void Animate(float tstart, float tend)
     {
-        //rotationAngle = -2.2f; //saját tengely körüli forgás
-        //rotationAxis = vec3(1,-1,1);
         
     }
     
@@ -1120,8 +1121,8 @@ public:
     void addChildrenWithParams(vec3 position, vec3 normal)
     {
         TractricoidObject * tractric = new TractricoidObject(phongShader, childMaterial, transitionTexture, tractricoidGeometry, normal, this);
-        tractric->translation = (position * 0.85f) + translation; //value of 0.85 changes as parent object is being scaled
-        tractric->scale = vec3(0.1f, 0.1f, 0.1f);
+        tractric->translation = (position *1.18f);
+        tractric->scale = vec3(0.15f, 0.15f, 0.15f);
         //tractric->rotationAxis = rotationAxis;
         //tractric->rotationAngle = rotationAngle;
         children.push_back(tractric);
@@ -1369,8 +1370,6 @@ public:
         Object * tractric = new Object(phongShader, material1, transitionTexture, tractricoid);
         tractric->translation = vec3(0, 0, 0);
         tractric->rotationAxis = vec3(1, 0, 0);
-        
-
         tractric->scale = vec3(0.2f, 0.2f, 0.2f);
         //objects.push_back(tractric);
         
