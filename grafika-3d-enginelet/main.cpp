@@ -485,6 +485,7 @@ public:
         
         if(!isTetrahedron)
         {
+            //TODO: melyik u és v-hez kell tractricoid is, jelzés a genvertexdatanak pl egy negatív paraméter értékkel
             for (int i = 0; i < N; i++) {
                 for (int j = 0; j <= M; j++) {
                     vtxData.push_back(GenVertexData((float)j / M, (float)i / N));
@@ -603,117 +604,6 @@ static vec3 antibodyCenter;
 
 
 //---------------------------
-class VirusParent : public ParamSurface {
-//---------------------------
-    float radius = 1.2f;
-public:
-    VirusParent() { create(); }
-
-    float getRadius(){return radius;}
-    
-    VertexData GenVertexData(float u, float v) {
-        VertexData vd;
-        radius = (1.3f + (sinf((19.0f*u) + (24.0f*v)))/8);
-        
-        //TODO: determining normal of the surface
-        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       radius * cosf(v * (float)M_PI));
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
-    
-    VertexData GenVertexDataForTime(float u, float v, float tend) {
-        VertexData vd;
-        radius = 1.3f + ((sin((19.0f*u) + (24.0f*v)))/8 * cosf(tend*2));
-        
-        //TODO: determining normal of the surface
-        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
-                                       radius * cosf(v * (float)M_PI));
-        
-        //derivaltak radius fuggvenyt is beleszamolva
-        float xPDerU = sinf((float)M_PI*v) * (2.375f * cosf(2.0f * tend) * cosf(2.0f * (float)M_PI * u) * cosf(19.0f*u + 24.0f*v)
-                                         - (0.785398f * sinf(2.0f* (float)M_PI * u) * (cosf(2.0f*tend)*sinf(19.0f*u + 24.0f * v) + 10.4f)));
-        
-        float xPDerV = cosf(2.0f * (float)M_PI * u) * (3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v)*cosf(19.0f * u + 24.0f * v) +
-                                         (cosf((float)M_PI * v) *(0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
-        
-        float yPDerU = sinf((float)M_PI * v) * ( 2.375f * cosf( 2.0f * tend) * sinf(2.0f * (float)M_PI * u) * cosf(19.0f * u + 24.0f * v) +
-                                         (cosf(2.0f * (float)M_PI * u) * ( 0.785398f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 8.16814f)));
-        
-        float yPDerV = sinf(2.0f * (float)M_PI * u) * ( 3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v) +
-                                         (cosf((float)M_PI * v) * (0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
-        
-        float zPDerU = 2.375f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v);
-        
-        float zPDerV = 3.0f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f*v) -
-                                        (0.392699f * sinf((float)M_PI * v) * (cosf( 2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 10.4f));
-        
-        //normalvektorok a sugarat csak ertekkent szamolva
-        /*
-        xPDerU = - 2.0f * M_PI * radius * sinf(2.0f * M_PI * u) * sinf(M_PI * v);
-        xPDerV = M_PI * radius * cosf(2.0f * M_PI * u)*cosf(M_PI * v);
-        yPDerU = 2.0f * M_PI * radius * cosf(2.0f * M_PI * u) * sinf(M_PI * v);
-        yPDerV = M_PI * radius * sinf(2.0f * M_PI * u)*sinf(M_PI * v);
-        zPDerU = 0;
-        zPDerV = - M_PI * radius * sinf(M_PI * v);
-         */
-        
-        
-        float normalX = xPDerU * xPDerV;
-        float normalY = yPDerU * yPDerV;
-        float normalZ = zPDerU * zPDerV;
-        
-        vec3 one = vec3(1.0f, 1.0f, 1.0f);
-        vd.normal = normalize(cross(vec3(xPDerU, yPDerU, zPDerU), vec3(xPDerV, yPDerV, zPDerV)));
-        
-        float posAbs = sqrtf( powf(vd.position.x, 2.0f) + powf(vd.position.y, 2.0f) + powf(vd.position.z, 2.0f));
-        float posPlusNormalAbs = sqrtf( powf(normalX + vd.position.x, 2.0f) + powf(normalY + vd.position.y, 2.0f) +
-                                       powf(normalZ + vd.position.z, 2.0f));
-        
-        //if ( posPlusNormalAbs < posAbs) vd.normal = normalize(vec3(-normalX, -normalY, -normalZ));
-        //else vd.normal = normalize(vec3(normalX, normalY, normalZ));
-        
-        vd.texcoord = vec2(u, v);
-        return vd;
-    }
-    
-    //virus waving movement
-    void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
-        nVtxPerStrip = (M + 1) * 2;
-        nStrips = N;
-        
-        glDeleteBuffers(1, &vbo);
-        glDeleteVertexArrays(1, &vao);
-        
-        //vao letrehozas bindolas
-        glGenVertexArrays(1, &vao); //minden vaohoz egy vbo, amibe omlesztve lesznek az adatok: csupont helye, felulet normalvektora, textura koordinatak
-        glBindVertexArray(vao);
-        glGenBuffers(1, &vbo); // Generate 1 vertex buffer object
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        
-        while(vtxData.size() != 0){ vtxData.pop_back();} // vertices on the CPU
-        
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j <= M; j++) {
-                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)i / N, tend));
-                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)(i + 1) / N, tend));
-            }
-        }
-        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
-        // Enable the vertex attribute arrays
-        glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
-        glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
-        glEnableVertexAttribArray(2);  // attribute array 2 = TEXCOORD0
-        // attribute array, components/attribute, component type, normalize?, stride, offset
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, position));
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, normal));
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
-    }
-};
-
-//---------------------------
 class Tetrahedron : public ParamSurface {
 //---------------------------
     /*A tetrtaéder definíciója a 3 alappontból, plusz magasságból
@@ -763,8 +653,6 @@ public:
         VertexData vd4;
         VertexData vd5;
         VertexData vd6;
-
-        //TODO: a normalvektor kicsit rossz iranyba mutat, csak az alapnal teljesen jo, mindig a negyedik csucsbol kene a kozeppontba huzni
 
         vd1.position = vert1;
         vd1.normal = normalize(centerOfBaseSurface-centerOfTetrahedron);
@@ -963,30 +851,219 @@ public:
         rotationAngle = -2.2f; //saját tengely körüli forgás
         rotationAxis = vec3(1,-1,1);
         
-        
-        
-        
+    }
+    
+    virtual void addChildrenWithParams(vec3 position, vec3 normal){};
+    
+    mat4 getMMatrix(){ return mat4(ScaleMatrix(scale) * RotationMatrix(rotationAngle, rotationAxis) * TranslateMatrix(translation));}
+};
+
+//---------------------------
+struct TractricoidObject : Object {
+//---------------------------
+    vec3 orientationNormal;
+    mat4 normalRotationMatrix;
+    Object * parent;
+    
+public:
+    TractricoidObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, vec3 normal, Object * _parent) :
+        Object(_shader, _material, _texture, _geometry) {
+            
+            parent = _parent;
+            orientationNormal = normal;
+            float row1column1 = orientationNormal.y / sqrtf( powf(orientationNormal.x,2.0f) + powf(orientationNormal.y,2.0f));
+            float row1column2 = -orientationNormal.x / sqrtf( powf(orientationNormal.x,2.0f) + powf(orientationNormal.y,2.0f));
+            float row1column3 = 0;
+            
+            float row2column1 = (orientationNormal.x * orientationNormal.z)/ sqrtf( powf(orientationNormal.x,2.0f) + powf(orientationNormal.y,2.0f));
+            float row2column2 = (orientationNormal.y * orientationNormal.z)/ sqrtf( powf(orientationNormal.x,2.0f) + powf(orientationNormal.y,2.0f));
+            float row2column3 = -sqrtf( powf(orientationNormal.x,2.0f) + powf(orientationNormal.y,2.0f));
+            
+            normalRotationMatrix = mat4(row1column1, row1column2, row1column3,0,
+                                        row2column1, row2column2, row2column3,0,
+                                        orientationNormal.x, orientationNormal.y, orientationNormal.z,0,
+                                        0,0,0,1.0f);
+    }
+    
+    virtual void SetModelingTransform(mat4& M, mat4& Minv) {
+        M =  ScaleMatrix(scale) * normalRotationMatrix * TranslateMatrix(translation);
+        Minv = TranslateMatrix(-translation) * normalRotationMatrix * ScaleMatrix(vec3(1 / scale.x, 1 / scale.y, 1 / scale.z));
+    }
+
+    virtual void Draw(RenderState state) {
+        mat4 M, Minv;
+        SetModelingTransform(M, Minv);
+        state.M = M;
+        state.Minv = Minv;
+        state.MVP = state.M * state.V * state.P;
+        state.material = material;
+        state.texture = texture;
+        shader->Bind(state);
+        geometry->Draw();
+    }
+
+    //az animaciot biztosito fuggveny
+    virtual void Animate(float tstart, float tend)
+    {
+        //rotationAngle = -2.2f; //saját tengely körüli forgás
+        //rotationAxis = vec3(1,-1,1);
         
     }
+    
+    virtual void addChildrenWithParams(vec3 position, vec3 normal){};
 };
+
+
+//---------------------------
+class VirusParent : public ParamSurface {
+//---------------------------
+    float radius = 1.2f;
+    Object* parentObject;
+    
+public:
+    VirusParent() { create(); }
+    
+    void setParentObject(Object * parent){ parentObject = parent;}
+    
+    float getRadius(){return radius;}
+    
+    VertexData GenVertexData(float u, float v) {
+        VertexData vd;
+        radius = (1.3f + (sinf((19.0f*u) + (24.0f*v)))/8);
+        
+        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * cosf(v * (float)M_PI));
+        vd.texcoord = vec2(u, v);
+        return vd;
+    }
+    
+    VertexData GenVertexDataForTime(float u, float v, float tend) {
+        
+        
+        
+        VertexData vd;
+        radius = 1.3f + ((sin((19.0f*u) + (24.0f*v)))/8 * cosf(tend*2));
+        
+        vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                                       radius * cosf(v * (float)M_PI));
+        
+        //feluleti normalis
+        float xPDerU = sinf((float)M_PI*v) * (2.375f * cosf(2.0f * tend) * cosf(2.0f * (float)M_PI * u) * cosf(19.0f*u + 24.0f*v)
+                                         - (0.785398f * sinf(2.0f* (float)M_PI * u) * (cosf(2.0f*tend)*sinf(19.0f*u + 24.0f * v) + 10.4f)));
+        
+        float xPDerV = cosf(2.0f * (float)M_PI * u) * (3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v)*cosf(19.0f * u + 24.0f * v) +
+                                         (cosf((float)M_PI * v) *(0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
+        
+        float yPDerU = sinf((float)M_PI * v) * ( 2.375f * cosf( 2.0f * tend) * sinf(2.0f * (float)M_PI * u) * cosf(19.0f * u + 24.0f * v) +
+                                         (cosf(2.0f * (float)M_PI * u) * ( 0.785398f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 8.16814f)));
+        
+        float yPDerV = sinf(2.0f * (float)M_PI * u) * ( 3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v) +
+                                         (cosf((float)M_PI * v) * (0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
+        
+        float zPDerU = 2.375f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v);
+        
+        float zPDerV = 3.0f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f*v) -
+                                        (0.392699f * sinf((float)M_PI * v) * (cosf( 2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 10.4f));
+        
+        //normalvektorok a sugarat csak ertekkent szamolva
+        /*
+        xPDerU = - 2.0f * M_PI * radius * sinf(2.0f * M_PI * u) * sinf(M_PI * v);
+        xPDerV = M_PI * radius * cosf(2.0f * M_PI * u)*cosf(M_PI * v);
+        yPDerU = 2.0f * M_PI * radius * cosf(2.0f * M_PI * u) * sinf(M_PI * v);
+        yPDerV = M_PI * radius * sinf(2.0f * M_PI * u)*sinf(M_PI * v);
+        zPDerU = 0;
+        zPDerV = - M_PI * radius * sinf(M_PI * v);
+         */
+  
+        vec3 one = vec3(1.0f, 1.0f, 1.0f);
+        vd.normal = normalize(cross(vec3(xPDerU, yPDerU, zPDerU), vec3(xPDerV, yPDerV, zPDerV)));
+
+        vd.texcoord = vec2(u, v);
+        
+        //tractricoidok hozzáadása
+        if( v == 0.75f || v == 0.5f || v == 0.25f)
+        {
+            parentObject->addChildrenWithParams(vd.position, vd.normal);
+
+        }
+        
+
+        
+        
+        return vd;
+    }
+    
+    //virus waving movement
+    void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
+        nVtxPerStrip = (M + 1) * 2;
+        nStrips = N;
+        
+        glDeleteBuffers(1, &vbo);
+        glDeleteVertexArrays(1, &vao);
+        
+        //vao letrehozas bindolas
+        glGenVertexArrays(1, &vao); //minden vaohoz egy vbo, amibe omlesztve lesznek az adatok: csupont helye, felulet normalvektora, textura koordinatak
+        glBindVertexArray(vao);
+        glGenBuffers(1, &vbo); // Generate 1 vertex buffer object
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        
+        while(vtxData.size() != 0){ vtxData.pop_back();} // vertices on the CPU
+        
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j <= M; j++) {
+                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)i / N, tend));
+                vtxData.push_back(GenVertexDataForTime((float)j / M, (float)(i + 1) / N, tend));
+            }
+        }
+        glBufferData(GL_ARRAY_BUFFER, nVtxPerStrip * nStrips * sizeof(VertexData), &vtxData[0], GL_STATIC_DRAW);
+        // Enable the vertex attribute arrays
+        glEnableVertexAttribArray(0);  // attribute array 0 = POSITION
+        glEnableVertexAttribArray(1);  // attribute array 1 = NORMAL
+        glEnableVertexAttribArray(2);  // attribute array 2 = TEXCOORD0
+        // attribute array, components/attribute, component type, normalize?, stride, offset
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, position));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, normal));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)offsetof(VertexData, texcoord));
+    }
+};
+
 
 //---------------------------
 struct VirusObject : Object{
 //---------------------------
     VirusParent* virusParent; //transformed sphere body of the virus
+    
+    Material * childMaterial;
+    Shader * phongShader = new PhongShader();
+    Texture * transitionTexture = new TransitionTexture(200,200);
+    Geometry * tractricoidGeometry = new Tractricoid();
+
+
+
+    
 public:
     
     vec3 getParentCenter(){ return translation;}
     float getRadius(){ return 0.7f;}
     
     //children
-    std::vector<Tractricoid*> children;
-    int maxNumOfChildrenInARing = 20;
+    std::vector<Object*> children;
 
     //constr
     VirusObject(Shader * _shader, Material * _material, Texture * _texture, Geometry * _geometry, VirusParent * _parent) :
     Object(_shader, _material, _texture, _geometry){
         virusParent = _parent;
+        
+        _parent->setParentObject(this);
+        
+        childMaterial = new Material;
+        childMaterial->kd = vec3(0.8f, 0.6f, 0.4f);
+        childMaterial->ks = vec3(0.3f, 0.3f, 0.3f);
+        childMaterial->ka = vec3(0.2f, 0.2f, 0.2f);
+        childMaterial->shininess = 30;
+        
     }
     
     void SetModelingTransform(mat4& M, mat4& Minv) {
@@ -1004,10 +1081,13 @@ public:
         state.texture = texture;
         shader->Bind(state);
         geometry->Draw();
+        for(int i = 0; i < children.size(); i++)
+        {
+            children[i]->Draw(state);
+        }
     }
 
     //az animaciot biztosito fuggveny
-    //TODO: animacio: mozgas, hullamzas, talan forgas is
      void Animate(float tstart, float tend)
     {
         
@@ -1020,24 +1100,31 @@ public:
         rotationAxis = cosf(tend);
         virusParent->reCreate(tessellationLevel, tessellationLevel, tend);*/
         
+        
         rotationAngle = cosf(tend); //saját tengely körüli forgás
         vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
         translationVec = normalize(translationVec);
         translation = translationVec;
         rotationAxis = normalize(vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f)));
-        virusParent->reCreate(tessellationLevel, tessellationLevel, tend);
         
+        //deleting child object to regenerate them
+        while( children.size() != 0 ) children.pop_back();
+        
+        virusParent->reCreate(tessellationLevel, tessellationLevel, tend);
+
         virusRadius = getRadius();
         virusCenter = getParentCenter();
     }
     
     //TODO: collection tractricoid objects aroud the sphere
-    void addChildren(float tend)
+    void addChildrenWithParams(vec3 position, vec3 normal)
     {
-        for( float verticalAngle = 22.5f; verticalAngle < 180.0f; verticalAngle += 22.5f)
-        {
-            
-        }
+        TractricoidObject * tractric = new TractricoidObject(phongShader, childMaterial, transitionTexture, tractricoidGeometry, normal, this);
+        tractric->translation = (position * 0.85f) + translation; //value of 0.85 changes as parent object is being scaled
+        tractric->scale = vec3(0.1f, 0.1f, 0.1f);
+        //tractric->rotationAxis = rotationAxis;
+        //tractric->rotationAngle = rotationAngle;
+        children.push_back(tractric);
     }
 };
 
@@ -1048,8 +1135,8 @@ struct AntibodyObject : Object{
     std::vector<Tetrahedron*> childrenDepth1;
     std::vector<Tetrahedron*> childrenDepth2;
     std::vector<Tetrahedron*> childrenDepth3;
-    float childPath1Height = 0.9f;
-    float childPath2Height = 0.5f;
+    float childPath1Height = 1.1f;
+    float childPath2Height = 1.1f;
     float childPath3Height = 0.2f;
 
     
@@ -1078,31 +1165,18 @@ public:
         state.material = material;
         state.texture = texture;
         shader->Bind(state);
-        for(int i = 0; i < childrenDepth1.size(); i++)
-        {
-            childrenDepth1[i]->Draw();
-        }
-        for(int i = 0; i < childrenDepth2.size(); i++)
-        {
-            childrenDepth2[i]->Draw();
-        }
-        for(int i = 0; i < childrenDepth3.size(); i++)
-        {
-            childrenDepth3[i]->Draw();
-        }
+        for(int i = 0; i < childrenDepth1.size(); i++){ childrenDepth1[i]->Draw(); }
+        for(int i = 0; i < childrenDepth2.size(); i++){ childrenDepth2[i]->Draw(); }
+        for(int i = 0; i < childrenDepth3.size(); i++){ childrenDepth3[i]->Draw(); }
         geometry->Draw();
-        
-        
     }
 
      void Animate(float tstart, float tend)
     {
         if(!isAnimated) return;
-            
+        
         rotationAngle = 0.8f * tend; //saját tengely körüli forgás
         rotationAxis = 1;
-
-        
         dT += tend-tstart;
         if(dT > 0.1f)
         {
@@ -1278,7 +1352,6 @@ public:
         antibodyObject->scale = vec3(0.5f, 0.5f, 0.5f);
         objects.push_back(antibodyObject);
         
-        //MARK: a virus es antitest object együtt nem működik, a virus felülírja az antitest objectet
         //Virus object
         VirusObject * virusObject = new VirusObject(phongShader, material1, stripyTexture, virusParentGeometry, virusParent);
         virusObject->translation = vec3(3, 0, 0);
@@ -1293,7 +1366,6 @@ public:
         sphere->scale = vec3(3.0f, 3.0f, 2.6f);
         objects.push_back(sphere);
         
-        //Sphere space
         Object * tractric = new Object(phongShader, material1, transitionTexture, tractricoid);
         tractric->translation = vec3(0, 0, 0);
         tractric->rotationAxis = vec3(1, 0, 0);
