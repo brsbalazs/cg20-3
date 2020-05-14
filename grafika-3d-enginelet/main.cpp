@@ -922,6 +922,18 @@ class VirusParent : public ParamSurface {
     Object* parentObject;
     int ctr = 0;
     
+    bool ready01 = false;
+    bool ready02 = false;
+    bool ready03 = false;
+    bool ready04 = false;
+    bool ready05 = false;
+    bool ready06 = false;
+    bool ready07 = false;
+    bool ready08 = false;
+    bool ready09 = false;
+
+    
+    
 public:
     VirusParent() { create(); }
     
@@ -985,43 +997,48 @@ public:
         vd.texcoord = vec2(u, v);
         
         //tractricoidok hozzáadása
-        // v = 0.5 sávba 42 darab kerül a többibe az aktuális v érték (0.5,0) vektorral bezárt szög cosinusa
-        if( v == 0.1f || v == 0.9f)
+        // v = 0.5 n darab kerül a többibe az aktuális v érték (0.5,0) vektorral bezárt szög cosinusa
+        if( (v == 0.1f && !ready01) || (v == 0.9f && !ready09))
         {
-            //13darab
-            float incrementum = (1.0f/6.0f);
-            for( float i = 0.0f; i < 1.0f; i += incrementum)
-            {
-                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
-            }
-        }
-        else if( v == 0.2f || v == 0.8f)
-        {
-            //25 darab
-            float incrementum = (1.0f/12.0f);
-            for( float i = 0.0f; i < 1.0f; i += incrementum)
-            {
-                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
-            }
-        }
-        else if( v == 0.3f || v == 0.7f)
-        {
-            //34 darab
-            float incrementum = (1.0f/16.0f);
+            float incrementum = (1.0f/7.0f);
             for( float i = 0.0f; i < 1.0f; i += incrementum)
             {
                 parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
             }
             
+            if(v == 0.1f) ready01 = true;
+            else ready09 = true;
         }
-        else if( v == 0.4f || v == 0.6f)
+        else if( (v == 0.2f && !ready02) || (v == 0.8f && !ready08))
         {
-            //40 darab
-            float incrementum = (1.0f/20.0f);
+            float incrementum = (1.0f/12.0f);
             for( float i = 0.0f; i < 1.0f; i += incrementum)
             {
                 parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
             }
+            
+            if(v == 0.2f) ready02 = true;
+            else ready08 = true;
+        }
+        else if( (v == 0.3f && !ready03) || (v == 0.7f && !ready07))
+        {
+            float incrementum = (1.0f/16.0f);
+            for( float i = 0.0f; i < 1.0f; i += incrementum)
+            {
+                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
+            }
+            if(v == 0.3f) ready03 = true;
+            else ready07 = true;
+        }
+        else if( (v == 0.4f && !ready04) || (v == 0.6f && !ready06))
+        {
+            float incrementum = (1.0f/19.0f);
+            for( float i = 0.0f; i < 1.0f; i += incrementum)
+            {
+                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
+            }
+            if(v == 0.4f) ready04 = true;
+            else ready06 = true;
         }
         else if( v == 0.5f){ parentObject->addChildrenWithParams(vd.position, vd.normal);}
 
@@ -1054,10 +1071,23 @@ public:
         return normalize(cross(vec3(xPDerU, yPDerU, zPDerU), vec3(xPDerV, yPDerV, zPDerV)));
     }
     
-    
+    void clearReadyState(){
+    ready01 = false;
+    ready02 = false;
+    ready03 = false;
+    ready04 = false;
+    ready05 = false;
+    ready06 = false;
+    ready07 = false;
+    ready08 = false;
+    ready09 = false;
+}
     
     //virus waving movement
     void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
+        
+        clearReadyState();
+        
         ctr = 0;
         
         nVtxPerStrip = (M + 1) * 2;
