@@ -90,6 +90,7 @@ public:
     }
 };
 
+
 //---------------------------
 class TransitionTexture : public Texture { //textura tipus implementacioja, letrehozasa
 //---------------------------
@@ -107,12 +108,12 @@ public:
 };
 
 //---------------------------
-class StripyTexture : public Texture { //textura tipus implementacioja, letrehozasa
+class StripyTexture : public Texture { //texture class implementation
 //---------------------------
 public:
     StripyTexture(const int width = 0, const int height = 0) : Texture() {
         std::vector<vec4> image(width * height);
-        const vec4 yellow(1, 1, 0, 1), blue(0, 0, 1, 1);
+        const vec4 yellow(0.1, 0.1, 0.1, 1), blue(0.8, 0.4, 0.4, 1);
         for (int x = 0; x < width; x++)
         {
             int counter = 0;
@@ -945,6 +946,7 @@ public:
         VertexData vd;
         radius = (1.3f + (sinf((19.0f*u) + (24.0f*v)))/8);
         
+        
         vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
                                        radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
                                        radius * cosf(v * (float)M_PI));
@@ -958,7 +960,7 @@ public:
         
         VertexData vd;
         radius = 1.3f + ((sin((19.0f*u) + (24.0f*v)))/8 * cosf(tend*2));
-        
+
         vd.position = vd.normal = vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
                                        radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
                                        radius * cosf(v * (float)M_PI));
@@ -1000,7 +1002,7 @@ public:
         // v = 0.5 n darab kerül a többibe az aktuális v érték (0.5,0) vektorral bezárt szög cosinusa
         if( (v == 0.1f && !ready01) || (v == 0.9f && !ready09))
         {
-            float incrementum = (1.0f/7.0f);
+            float incrementum = (1.0f/6.0f);
             for( float i = 0.0f; i < 1.0f; i += incrementum)
             {
                 parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
@@ -1185,15 +1187,7 @@ public:
     {
         
         if(!isAnimated) return;
-        /*
-        rotationAngle = 0.8f * tend; //saját tengely körüli forgás
-        vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
-        translationVec = normalize(translationVec);
-        translation = translationVec;
-        rotationAxis = cosf(tend);
-        virusParent->reCreate(tessellationLevel, tessellationLevel, tend);*/
-        
-        
+    
         rotationAngle = cosf(tend); //saját tengely körüli forgás
         vec3 translationVec = vec3(sinf(tend/2.0f), sinf(tend/3.0f), sinf(tend/5.0f));
         translationVec = normalize(translationVec);
@@ -1266,7 +1260,6 @@ public:
 
      void Animate(float tstart, float tend)
     {
-        if(!isAnimated) return;
         
         rotationAngle = 0.8f * tend; //saját tengely körüli forgás
         rotationAxis = 1;
@@ -1309,14 +1302,15 @@ public:
         //createChildrenForDepth2Tetrahedrons(tend);
         
         antibodyRadius = getRadius();
-        antibodyCenter = getParentCenter();
+        antibodyCenter = getParentCenter() + translation;
         
         //TODO: Ha x távolságra van a közepük egymástól, ne fusson tovább az animáció függvény
         vec3 a = antibodyCenter;
         vec3 b = virusCenter;
         float distance = sqrtf( powf(a.x-b.x,2.0f) + powf(a.y-b.y,2.0f) + powf(a.z-b.z, 2.0f));
-        if (false && distance < virusRadius+antibodyRadius)
+        if (distance < 1.7 && isAnimated)
         {
+            printf("\n Animation stoped with \n-position of antibody object at: %f %f %f \n- virus object at: %f %f %f", antibodyCenter.x, antibodyCenter.y, antibodyCenter.z, virusCenter.x, virusCenter.y, virusCenter.z);
             isAnimated = false;
             
         }
@@ -1458,12 +1452,6 @@ public:
         //virusObject->rotationAxis = vec3(1, 1, -1);
         sphere->scale = vec3(3.0f, 3.0f, 2.6f);
         objects.push_back(sphere);
-        
-        Object * tractric = new Object(phongShader, material1, transitionTexture, tractricoid);
-        tractric->translation = vec3(0, 0, 0);
-        tractric->rotationAxis = vec3(1, 0, 0);
-        tractric->scale = vec3(0.2f, 0.2f, 0.2f);
-        //objects.push_back(tractric);
         
     
         
