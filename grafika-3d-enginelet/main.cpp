@@ -920,6 +920,7 @@ class VirusParent : public ParamSurface {
 //---------------------------
     float radius = 1.2f;
     Object* parentObject;
+    int ctr = 0;
     
 public:
     VirusParent() { create(); }
@@ -984,20 +985,81 @@ public:
         vd.texcoord = vec2(u, v);
         
         //tractricoidok hozzáadása
-        if( v == 0.75f || v == 0.5f || v == 0.25f)
+        // v = 0.5 sávba 42 darab kerül a többibe az aktuális v érték (0.5,0) vektorral bezárt szög cosinusa
+        if( v == 0.1f || v == 0.9f)
         {
-            parentObject->addChildrenWithParams(vd.position, vd.normal);
-
+            //13darab
+            float incrementum = (1.0f/6.0f);
+            for( float i = 0.0f; i < 1.0f; i += incrementum)
+            {
+                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
+            }
         }
-        
+        else if( v == 0.2f || v == 0.8f)
+        {
+            //25 darab
+            float incrementum = (1.0f/12.0f);
+            for( float i = 0.0f; i < 1.0f; i += incrementum)
+            {
+                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
+            }
+        }
+        else if( v == 0.3f || v == 0.7f)
+        {
+            //34 darab
+            float incrementum = (1.0f/16.0f);
+            for( float i = 0.0f; i < 1.0f; i += incrementum)
+            {
+                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
+            }
+            
+        }
+        else if( v == 0.4f || v == 0.6f)
+        {
+            //40 darab
+            float incrementum = (1.0f/20.0f);
+            for( float i = 0.0f; i < 1.0f; i += incrementum)
+            {
+                parentObject->addChildrenWithParams(calcPositionOfTractricoid(i, v, tend), calcNormalOfTractricoid(i, v, tend));
+            }
+        }
+        else if( v == 0.5f){ parentObject->addChildrenWithParams(vd.position, vd.normal);}
 
-        
-        
         return vd;
     }
     
+    vec3 calcPositionOfTractricoid(float u, float v, float tend)
+    {
+        radius = 1.3f + ((sin((19.0f*u) + (24.0f*v)))/8 * cosf(tend*2));
+               
+        return vec3( radius * cosf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                     radius * sinf(u * 2.0f * (float)M_PI) * sinf(v * (float)M_PI),
+                     radius * cosf(v * (float)M_PI));
+    }
+    
+    vec3 calcNormalOfTractricoid( float u, float v, float tend)
+    {
+        float xPDerU = sinf((float)M_PI*v) * (2.375f * cosf(2.0f * tend) * cosf(2.0f * (float)M_PI * u) * cosf(19.0f*u + 24.0f*v)
+                                         - (0.785398f * sinf(2.0f* (float)M_PI * u) * (cosf(2.0f*tend)*sinf(19.0f*u + 24.0f * v) + 10.4f)));
+        float xPDerV = cosf(2.0f * (float)M_PI * u) * (3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v)*cosf(19.0f * u + 24.0f * v) +
+                                         (cosf((float)M_PI * v) *(0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
+        float yPDerU = sinf((float)M_PI * v) * ( 2.375f * cosf( 2.0f * tend) * sinf(2.0f * (float)M_PI * u) * cosf(19.0f * u + 24.0f * v) +
+                                         (cosf(2.0f * (float)M_PI * u) * ( 0.785398f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 8.16814f)));
+        float yPDerV = sinf(2.0f * (float)M_PI * u) * ( 3.0f * cosf(2.0f * tend) * sinf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v) +
+                                         (cosf((float)M_PI * v) * (0.392699f * cosf(2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 4.08407f)));
+        float zPDerU = 2.375f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f * v);
+        float zPDerV = 3.0f * cosf(2.0f * tend) * cosf((float)M_PI * v) * cosf(19.0f * u + 24.0f*v) -
+                                        (0.392699f * sinf((float)M_PI * v) * (cosf( 2.0f * tend) * sinf(19.0f * u + 24.0f * v) + 10.4f));
+        vec3 one = vec3(1.0f, 1.0f, 1.0f);
+        return normalize(cross(vec3(xPDerU, yPDerU, zPDerU), vec3(xPDerV, yPDerV, zPDerV)));
+    }
+    
+    
+    
     //virus waving movement
     void reCreate(int N = tessellationLevel, int M = tessellationLevel, float tend = 0) {
+        ctr = 0;
+        
         nVtxPerStrip = (M + 1) * 2;
         nStrips = N;
         
